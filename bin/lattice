@@ -7,13 +7,16 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SC_MAIN="$SCRIPT_DIR/../sc/main.scd"
 
-# jackd を再起動させるために既存プロセスを停止
+# 既存プロセスを停止
 pkill jackd 2>/dev/null || true
 pkill sclang 2>/dev/null || true
 sleep 1
 
-# jackd のデフォルトデバイスを hw:1 (HDMI) に設定
-# hw:0 = bcm2835 Headphones, hw:1 = vc4-hdmi-0 (HDMI)
+# PulseAudio が hw:1 (HDMI) を占有しているので解放する
+pulseaudio --kill 2>/dev/null || true
+sleep 1
+
+# jackd のデフォルトデバイスを HDMI に設定
 echo "-d alsa -d hw:1 -r 44100 -p 1024 -n 2" > ~/.jackdrc
 
 echo "[lattice] Starting SuperCollider (HDMI via JACK hw:1)..."
