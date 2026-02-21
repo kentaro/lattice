@@ -12,13 +12,18 @@ pkill jackd 2>/dev/null || true
 pkill sclang 2>/dev/null || true
 sleep 1
 
-# PulseAudio が hw:1 (HDMI) を占有しているので解放する
-pulseaudio --kill 2>/dev/null || true
-sleep 1
+# HDMI出力で JACK を起動する設定
+# ~/.jackdrc は scsynth が jackd を自動起動する際に読む (フルパス必須)
+JACKD=$(command -v jackd)
+echo "$JACKD -d alsa -d hw:1 -r 44100 -p 1024 -n 2" > ~/.jackdrc
 
-# jackd のデフォルトデバイスを HDMI に設定
-echo "-d alsa -d hw:1 -r 44100 -p 1024 -n 2" > ~/.jackdrc
+export QT_QPA_PLATFORM=offscreen
 
 echo "[lattice] Starting SuperCollider (HDMI via JACK hw:1)..."
-export QT_QPA_PLATFORM=offscreen
-exec sclang "$SC_MAIN"
+
+# PulseAudio がデバイスを占有している場合、pasuspender で一時解放
+if command -v pasuspender &>/dev/null && pulseaudio --check 2>/dev/null; then
+    exec pasuspender -- sclang "$SC_MAIN"
+else
+    exec sclang "$SC_MAIN"
+fi
