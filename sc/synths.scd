@@ -118,19 +118,21 @@ SynthDef(\fx, { |freq=440, amp=0.6, attack=0.02, release=0.4, pan=0.0|
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-// ─── 汎用: \tone (gol-synth など外部MIDI用) ────────────────────────────────
-// ベル/プラック系の軽い音色 (生成音楽向き)
-SynthDef(\tone, { |freq=440, amp=0.3, attack=0.005, release=0.5,
+// ─── 汎用: \tone (gol-synth・傀儡師 など外部MIDI用) ─────────────────────
+// ソフトパッド系: ふわっと立ち上がるフィルタードパッド (鍵盤のRhodesと棲み分け)
+SynthDef(\tone, { |freq=440, amp=0.3, attack=0.08, release=0.8,
                    cutoff=8000, reverb=0.2, pan=0.0|
     var env = EnvGen.kr(
-        Env.perc(attack, release, 1, -6),
+        Env.perc(attack, release, 1, -3),
         doneAction: Done.freeSelf
     );
-    // クリーンなSinOsc + 軽い倍音
-    var sig = SinOsc.ar(freq, 0, 0.6) + SinOsc.ar(freq * 2, 0, 0.2) + SinOsc.ar(freq * 3, 0, 0.08);
-    sig = RLPF.ar(sig, cutoff.clip(80, 18000), 0.5);
+    // 三角波風 (奇数倍音のみ) + わずかなデチューン
+    var sig = LFTri.ar(freq * 0.999, 0, 0.5) + LFTri.ar(freq * 1.001, 0, 0.5);
+    // 深いローパスでこもらせる (Rhodesのアタック感と差別化)
+    sig = LPF.ar(sig, (cutoff * 0.3).clip(80, 4000));
     sig = sig * env * amp;
-    sig = FreeVerb.ar(sig, reverb, 0.7, 0.5);
+    sig = (sig * 1.2).softclip;
+    sig = FreeVerb.ar(sig, reverb.max(0.4), 0.85, 0.4);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
