@@ -1,29 +1,26 @@
 // synths.scd — SynthDef定義
 
-// ─── 鍵盤用: \piano (Karplus-Strong ベース) ───────────────────────────────
+// ─── 鍵盤用: \piano (ローファイ エレピ / Rhodes風) ────────────────────────
 SynthDef(\piano, { |freq=440, amp=0.5, detune=0.0, attack=0.01, release=1.0,
                     cutoff=8000, resonance=0.3, reverb=0.3, pan=0.0|
-    var sig, env, excite, string, filtered, verb;
+    var sig, env, filtered, verb;
 
-    // エンベロープはピーク1.0、ampは別途乗算
     env = EnvGen.kr(
         Env.perc(attack, release, 1, -4),
         doneAction: Done.freeSelf
     );
 
-    // Karplus-Strong: ノイズバーストで弦を励起
-    excite = WhiteNoise.ar(0.5) * EnvGen.kr(Env.perc(0.001, 0.03));
-    string = CombL.ar(excite, 0.05, 1/freq, release);
+    // Rhodes風: SinOsc FM合成 (モジュレーター→キャリア)
+    sig = SinOsc.ar(freq, SinOsc.ar(freq * 2, 0, 1.5 * EnvGen.kr(Env.perc(0.001, 0.15))));
+    // デチューンでテープ風の揺らぎ
+    sig = sig + SinOsc.ar(freq * (1 + (detune * 0.008)), 0, 0.2);
+    sig = sig * env * amp;
 
-    // デチューンによるコーラス感 / vibrato
-    sig = Mix([
-        SinOsc.ar(freq * (1 + (detune * 0.01)), 0, 0.5),
-        SinOsc.ar(freq * (1 - (detune * 0.01)) * 2, 0, 0.15),
-        string
-    ]) * env * amp;
-
-    // フィルター
+    // フィルター (こもった暖かさ)
     filtered = RLPF.ar(sig, cutoff.clip(80, 18000), resonance.clip(0.01, 1.0));
+
+    // テープサチュレーション
+    filtered = (filtered * 1.3).softclip;
 
     // リバーブ
     verb = FreeVerb.ar(filtered, reverb, 0.8, 0.5);
