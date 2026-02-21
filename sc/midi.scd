@@ -111,44 +111,41 @@
         };
     });
 
-    // ─── DEBUG: CC全体を表示 ─────────────────────────────────────────────
-    MIDIdef.cc(\ccDebug, { |val, num, chan|
-        ("CC: ch=" ++ chan ++ " cc=" ++ num ++ " val=" ++ val).postln;
-    });
-
-    // ─── ch16 CC21-28 → グローバルパラメーター ────────────────────────────
+    // ─── CC21-28 → グローバルパラメーター ──────────────────────────────────
+    // Launchkey MK4: ノブのチャンネルはデバイス設定により変動するため
+    // CC番号のみでマッチ (全チャンネル受付)
     MIDIdef.cc(\knobs, { |val, num, chan|
-        if (chan == 15) {  // ch16 = index 15
-            var norm = val / 127.0;
-            case
-            { num == 21 } {
-                ~params[\cutoff] = (norm * 18000).clip(80, 18000);
-                ~activePianos.do { |s| s.set(\cutoff, ~params[\cutoff]) };
-            }
-            { num == 22 } {
-                ~params[\resonance] = norm.clip(0.01, 0.99);
-                ~activePianos.do { |s| s.set(\resonance, ~params[\resonance]) };
-            }
-            { num == 23 } {
-                ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
-            }
-            { num == 24 } {
-                ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
-            }
-            { num == 25 } {
-                ~params[\reverb] = norm;
-                ~activePianos.do { |s| s.set(\reverb, norm) };
-            }
-            { num == 26 } {
-                ~params[\detune] = norm * 30;
-                ~activePianos.do { |s| s.set(\detune, ~params[\detune]) };
-            }
-            { num == 27 } {
-                ~params[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
-            }
-            { num == 28 } {
-                ~params[\lfoDepth] = norm;
-            };
+        var norm = val / 127.0;
+        case
+        { num == 21 } {
+            ~params[\cutoff] = (norm * 18000).clip(80, 18000);
+            ~activePianos.do { |s| s.set(\cutoff, ~params[\cutoff]) };
+        }
+        { num == 22 } {
+            ~params[\resonance] = norm.clip(0.01, 0.99);
+            ~activePianos.do { |s| s.set(\resonance, ~params[\resonance]) };
+        }
+        { num == 23 } {
+            ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
+        }
+        { num == 24 } {
+            ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
+        }
+        { num == 25 } {
+            ~params[\reverb] = norm;
+            ~activePianos.do { |s| s.set(\reverb, norm) };
+        }
+        { num == 26 } {
+            ~params[\detune] = norm * 30;
+            ~activePianos.do { |s| s.set(\detune, ~params[\detune]) };
+        }
+        { num == 27 } {
+            ~params[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
+        }
+        { num == 28 } {
+            // ノブ8 → マスターボリューム
+            var db = norm.linlin(0, 1, -40, 6);
+            Server.default.volume.volume = db;
         };
     });
 
