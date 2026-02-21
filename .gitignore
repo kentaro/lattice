@@ -1,0 +1,7 @@
+# SuperCollider
+*.sclog
+synthdefs/
+recordings/
+
+# OS
+.DS_Store

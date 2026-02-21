@@ -1,0 +1,21 @@
+#!/bin/bash
+# lattice — SuperCollider シンセ起動スクリプト
+# Usage: bash bin/lattice
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SC_MAIN="$SCRIPT_DIR/../sc/main.scd"
+
+echo "[lattice] Starting PulseAudio..."
+pulseaudio --start --exit-idle-time=-1 2>/dev/null || true
+
+# HDMI出力をデフォルトに設定 (pi02)
+sleep 1
+if pactl info &>/dev/null; then
+    pactl set-default-sink alsa_output.platform-fef00700.hdmi.hdmi-stereo 2>/dev/null || true
+    echo "[lattice] Audio sink: HDMI"
+fi
+
+echo "[lattice] Starting SuperCollider..."
+exec sclang "$SC_MAIN"
