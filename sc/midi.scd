@@ -20,10 +20,19 @@
     // ─── CC値 → 実パラメーター変換 ────────────────────────────────────────
     ~ccToParam = { |ccVal|  ccVal / 127.0 };
 
-    // ─── ch1 NoteOn → \piano ──────────────────────────────────────────────
-    MIDIdef.noteOn(\keyboardOn, { |vel, note, chan|
+    // ─── Launchkey のソースUID検出 ──────────────────────────────────────────
+    ~launchkeyUID = nil;
+    MIDIClient.sources.do { |src|
+        if (src.device.containsi("Launchkey")) {
+            ~launchkeyUID = src.uid;
+            ("Launchkey detected: uid=" ++ src.uid).postln;
+        };
+    };
+
+    // ─── Launchkey ch1 NoteOn → \piano ──────────────────────────────────────
+    MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
         var freq, amp, synth;
-        if (chan == 0) {  // ch1 = index 0
+        if ((chan == 0) && (srcID == ~launchkeyUID)) {
             freq = note.midicps * (1 + (~pitchBend * 2/12));
             amp  = vel / 127.0 * 0.7;
             synth = Synth(\piano, [
@@ -41,9 +50,9 @@
         };
     });
 
-    // ─── ch1 NoteOff → \piano 解放 ────────────────────────────────────────
-    MIDIdef.noteOff(\keyboardOff, { |vel, note, chan|
-        if (chan == 0) {
+    // ─── Launchkey ch1 NoteOff → \piano 解放 ────────────────────────────────
+    MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
+        if ((chan == 0) && (srcID == ~launchkeyUID)) {
             ~activePianos[note].free;
             ~activePianos.removeAt(note);
         };
@@ -77,9 +86,9 @@
         };
     });
 
-    // ─── 他ch NoteOn → \tone (汎用 / gol-synth 等) ───────────────────────
-    MIDIdef.noteOn(\genericOn, { |vel, note, chan|
-        if ((chan != 0) && (chan != 9) && (chan != 15)) {
+    // ─── 汎用 NoteOn → \tone (Launchkey鍵盤・パッド以外の全ソース) ────────
+    MIDIdef.noteOn(\genericOn, { |vel, note, chan, srcID|
+        if ((chan != 9) && (srcID != ~launchkeyUID)) {
             Synth(\tone, [
                 \freq,    note.midicps,
                 \amp,     vel / 127.0 * 0.4,
