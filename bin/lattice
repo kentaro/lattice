@@ -7,16 +7,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SC_MAIN="$SCRIPT_DIR/../sc/main.scd"
 
-# ─── JACK を HDMI (hw:1) で先に起動 ────────────────────────────────────────
-# hw:0 = bcm2835 Headphones (ヘッドフォン端子)
-# hw:1 = vc4-hdmi-0 (HDMI)
-echo "[lattice] Starting JACK on HDMI (hw:1)..."
+# 既存の jackd / sclang を停止
 pkill jackd 2>/dev/null || true
+pkill sclang 2>/dev/null || true
 sleep 1
-jackd -d alsa -d hw:1 -r 44100 -p 1024 -n 2 &
-JACK_PID=$!
-sleep 3
 
-echo "[lattice] Starting SuperCollider..."
+echo "[lattice] Starting SuperCollider (HDMI hw:1)..."
 export QT_QPA_PLATFORM=offscreen
 exec sclang "$SC_MAIN"
