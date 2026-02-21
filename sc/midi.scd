@@ -111,6 +111,11 @@
         };
     });
 
+    // ─── DEBUG: CC全体を表示 ─────────────────────────────────────────────
+    MIDIdef.cc(\ccDebug, { |val, num, chan|
+        ("CC: ch=" ++ chan ++ " cc=" ++ num ++ " val=" ++ val).postln;
+    });
+
     // ─── ch16 CC21-28 → グローバルパラメーター ────────────────────────────
     MIDIdef.cc(\knobs, { |val, num, chan|
         if (chan == 15) {  // ch16 = index 15
