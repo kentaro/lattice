@@ -20,18 +20,12 @@
     // ─── CC値 → 実パラメーター変換 ────────────────────────────────────────
     ~ccToParam = { |ccVal|  ccVal / 127.0 };
 
-    // ─── DEBUG: 全 NoteOn を表示 ───────────────────────────────────────────
-    MIDIdef.noteOn(\debug, { |vel, note, chan|
-        ("MIDI NoteOn: ch=" ++ chan ++ " note=" ++ note ++ " vel=" ++ vel).postln;
-    });
-
     // ─── ch1 NoteOn → \piano ──────────────────────────────────────────────
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan|
         var freq, amp, synth;
         if (chan == 0) {  // ch1 = index 0
             freq = note.midicps * (1 + (~pitchBend * 2/12));
             amp  = vel / 127.0 * 0.7;
-            ("PIANO: note=" ++ note ++ " freq=" ++ freq ++ " amp=" ++ amp).postln;
             synth = Synth(\piano, [
                 \freq,      freq,
                 \amp,       amp,
@@ -43,8 +37,6 @@
                 \reverb,    ~params[\reverb],
                 \pan,       ((note - 60) / 36.0).clip(-1, 1)
             ]);
-            // デバッグ: \tone も同時に鳴らして \piano の問題を切り分け
-            Synth(\tone, [\freq, freq, \amp, amp, \attack, 0.01, \release, 0.5]);
             ~activePianos[note] = synth;
         };
     });

@@ -14,6 +14,11 @@ sleep 1
 
 export QT_QPA_PLATFORM=offscreen
 
+# システム音量を上げる (pactl が使える場合)
+if command -v pactl &>/dev/null; then
+    pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null || true
+fi
+
 echo "[lattice] Starting SuperCollider..."
 
 # PipeWire がある場合は pw-jack 経由 (HDMI対応)

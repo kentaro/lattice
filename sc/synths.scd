@@ -5,21 +5,22 @@ SynthDef(\piano, { |freq=440, amp=0.5, detune=0.0, attack=0.01, release=1.0,
                     cutoff=8000, resonance=0.3, reverb=0.3, pan=0.0|
     var sig, env, excite, string, filtered, verb;
 
+    // エンベロープはピーク1.0、ampは別途乗算
     env = EnvGen.kr(
-        Env.perc(attack, release, amp, -4),
+        Env.perc(attack, release, 1, -4),
         doneAction: Done.freeSelf
     );
 
     // Karplus-Strong: ノイズバーストで弦を励起
-    excite = WhiteNoise.ar(0.3) * EnvGen.kr(Env.perc(0.001, 0.02));
-    string = CombL.ar(excite, 1/20, 1/freq, release * 0.5);
+    excite = WhiteNoise.ar(0.5) * EnvGen.kr(Env.perc(0.001, 0.03));
+    string = CombL.ar(excite, 0.05, 1/freq, release);
 
     // デチューンによるコーラス感 / vibrato
     sig = Mix([
-        SinOsc.ar(freq * (1 + (detune * 0.01))),
-        SinOsc.ar(freq * (1 - (detune * 0.01)) * 2, 0, 0.3),
-        string * 0.5
-    ]) * env;
+        SinOsc.ar(freq * (1 + (detune * 0.01)), 0, 0.5),
+        SinOsc.ar(freq * (1 - (detune * 0.01)) * 2, 0, 0.15),
+        string
+    ]) * env * amp;
 
     // フィルター
     filtered = RLPF.ar(sig, cutoff.clip(80, 18000), resonance.clip(0.01, 1.0));
@@ -99,11 +100,11 @@ SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
 // ─── 汎用: \tone (gol-synth など外部MIDI用) ────────────────────────────────
 SynthDef(\tone, { |freq=440, amp=0.3, attack=0.01, release=0.5, pan=0.0|
     var env = EnvGen.kr(
-        Env.perc(attack, release, amp, -4),
+        Env.perc(attack, release, 1, -4),
         doneAction: Done.freeSelf
     );
-    var sig = SinOsc.ar(freq) * env;
-    sig = sig + (SinOsc.ar(freq * 2, 0, 0.2) * env);
+    var sig = SinOsc.ar(freq) * env * amp;
+    sig = sig + (SinOsc.ar(freq * 2, 0, 0.2) * env * amp);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
