@@ -91,7 +91,7 @@
         if ((chan != 9) && (srcID != ~launchkeyUID)) {
             Synth(\tone, [
                 \freq,    note.midicps,
-                \amp,     vel / 127.0 * 0.7,
+                \amp,     vel / 127.0 * 0.5,
                 \attack,  ~params[\attack],
                 \release, ~params[\release],
                 \cutoff,  ~params[\cutoff],
