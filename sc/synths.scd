@@ -60,15 +60,11 @@ SynthDef(\openhat, { |amp=0.5, pan=0.0|
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
+// kickと同じ構造: ピッチドロップSinOsc + ノイズバーストのアタック
 SynthDef(\tom, { |freq=150, amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.4, 1, -4), doneAction: Done.freeSelf);
-    // ヘッド打撃: ピッチダウンするサイン波 (キックと同じ手法)
-    var body = SinOsc.ar(XLine.kr(freq * 1.8, freq, 0.08)) * env;
-    // スティックのアタック: フィルタードノイズバースト
-    var stick = BPF.ar(WhiteNoise.ar, freq * 4, 0.5) * EnvGen.kr(Env.perc(0.001, 0.03)) * 0.5;
-    // シェル共鳴: 短い残響
-    var shell = BPF.ar(WhiteNoise.ar, freq * 1.5, 0.3) * EnvGen.kr(Env.perc(0.002, 0.12)) * 0.2;
-    var sig = (body + stick + shell) * amp;
+    var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.08)) * env * amp;
+    sig = sig + (WhiteNoise.ar(0.15) * EnvGen.kr(Env.perc(0.001, 0.04)) * amp);
     Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
 }).add;
 
@@ -104,25 +100,18 @@ SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
 }).add;
 
 // ─── 汎用: \tone (gol-synth など外部MIDI用) ────────────────────────────────
-// 温かみのあるアナログ風パッドサウンド
-SynthDef(\tone, { |freq=440, amp=0.3, attack=0.01, release=0.5,
+// ベル/プラック系の軽い音色 (生成音楽向き)
+SynthDef(\tone, { |freq=440, amp=0.3, attack=0.005, release=0.5,
                    cutoff=8000, reverb=0.2, pan=0.0|
     var env = EnvGen.kr(
-        Env.perc(attack, release, 1, -4),
+        Env.perc(attack, release, 1, -6),
         doneAction: Done.freeSelf
     );
-    // デチューンした複数オシレーターで厚みを出す
-    var sig = Mix([
-        Saw.ar(freq * 0.998, 0.3),
-        Pulse.ar(freq * 1.002, 0.4, 0.25),
-        SinOsc.ar(freq * 0.5, 0, 0.2)  // サブオクターブ
-    ]);
-    // フィルターエンベロープ (アタック時にブライト→暗くなる)
-    var filtEnv = EnvGen.kr(Env.perc(attack, release * 0.6, 1, -3));
-    var filtFreq = cutoff * (0.3 + (filtEnv * 0.7));
-    sig = RLPF.ar(sig, filtFreq.clip(80, 18000), 0.4);
+    // クリーンなSinOsc + 軽い倍音
+    var sig = SinOsc.ar(freq, 0, 0.6) + SinOsc.ar(freq * 2, 0, 0.2) + SinOsc.ar(freq * 3, 0, 0.08);
+    sig = RLPF.ar(sig, cutoff.clip(80, 18000), 0.5);
     sig = sig * env * amp;
-    sig = FreeVerb.ar(sig, reverb, 0.8, 0.4);
+    sig = FreeVerb.ar(sig, reverb, 0.7, 0.5);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
