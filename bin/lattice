@@ -7,9 +7,6 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SC_MAIN="$SCRIPT_DIR/../sc/main.scd"
 
-# FluidSynth は lattice に置き換えるため停止
-pkill fluidsynth 2>/dev/null || true
-
 # jackd を再起動させるために既存プロセスを停止
 pkill jackd 2>/dev/null || true
 pkill sclang 2>/dev/null || true
