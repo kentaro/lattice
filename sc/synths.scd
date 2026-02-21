@@ -32,83 +32,92 @@ SynthDef(\piano, { |freq=440, amp=0.5, detune=0.0, attack=0.01, release=1.0,
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-// ─── パッド用: ドラム・パーカッション ─────────────────────────────────────
+// ─── パッド用: ローファイヒップホップ ドラムキット ──────────────────────────
+// 共通キャラクター: テープサチュレーション + LPF + ヴァイナルテクスチャ
 
 SynthDef(\kick, { |amp=0.8, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.5, 1, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(120, 40, 0.08)) * env * amp;
-    sig = sig + (WhiteNoise.ar(0.1) * EnvGen.kr(Env.perc(0.001, 0.05)) * amp);
-    Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
+    var env = EnvGen.kr(Env.perc(0.01, 0.5, 1, -3), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(100, 38, 0.1)) * env * amp;
+    sig = sig + (WhiteNoise.ar(0.06) * EnvGen.kr(Env.perc(0.001, 0.03)) * amp);
+    sig = (sig * 1.5).softclip;
+    sig = LPF.ar(sig, 400);
+    sig = sig + (PinkNoise.ar(0.006) * env);
+    Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\snare, { |amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.2, 1, -4), doneAction: Done.freeSelf);
-    var tone = SinOsc.ar(180) * env * amp * 0.4;
-    var noise = BPF.ar(WhiteNoise.ar, 1200, 0.8) * env * amp * 0.8;
-    Out.ar(0, Pan2.ar((tone + noise).clip2(0.9), pan));
+    var env = EnvGen.kr(Env.perc(0.005, 0.25, 1, -4), doneAction: Done.freeSelf);
+    var tone = SinOsc.ar(170) * env * amp * 0.4;
+    var noise = BPF.ar(WhiteNoise.ar, 900, 0.9) * env * amp * 0.7;
+    var sig = tone + noise;
+    sig = (sig * 1.4).softclip;
+    sig = LPF.ar(sig, 3000);
+    sig = sig + (PinkNoise.ar(0.005) * env);
+    Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\hihat, { |amp=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.08, 1, -6), doneAction: Done.freeSelf);
-    var sig = HPF.ar(WhiteNoise.ar, 8000) * env * amp;
+    var env = EnvGen.kr(Env.perc(0.002, 0.06, 1, -8), doneAction: Done.freeSelf);
+    var sig = HPF.ar(WhiteNoise.ar, 6000) * env * amp;
+    sig = LPF.ar(sig, 9000);  // 高域も落としてこもらせる
+    sig = (sig * 1.3).softclip;
+    sig = sig + (PinkNoise.ar(0.004) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\openhat, { |amp=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.4, 1, -4), doneAction: Done.freeSelf);
-    var sig = HPF.ar(WhiteNoise.ar, 6000) * env * amp;
+    var env = EnvGen.kr(Env.perc(0.002, 0.35, 1, -4), doneAction: Done.freeSelf);
+    var sig = HPF.ar(WhiteNoise.ar, 5000) * env * amp;
+    sig = LPF.ar(sig, 8000);
+    sig = (sig * 1.3).softclip;
+    sig = sig + (PinkNoise.ar(0.005) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-// ローファイヒップホップ風バスドラ: 808風 + テープ暖かさ
+// ローファイヒップホップ風バスドラ (パッド上段左)
 SynthDef(\lofikick, { |freq=50, amp=0.8, pan=0.0|
     var env = EnvGen.kr(Env.perc(0.01, 0.6, 1, -3), doneAction: Done.freeSelf);
-    // 808風: 長めのサイン波ピッチドロップ
     var sig = SinOsc.ar(XLine.kr(freq * 2.5, freq * 0.8, 0.15)) * env * amp;
-    // テープサチュレーション (柔らかい歪み)
     sig = (sig * 1.5).softclip;
-    // ローパスでこもらせる (ヒップホップのマフルド感)
     sig = LPF.ar(sig, 200);
-    // わずかなヴァイナルノイズ
     sig = sig + (PinkNoise.ar(0.008) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-SynthDef(\tom, { |freq=150, amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.08)) * env * amp;
-    sig = sig + (WhiteNoise.ar(0.15) * EnvGen.kr(Env.perc(0.001, 0.04)) * amp);
-    Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
-}).add;
-
 SynthDef(\clap, { |amp=0.6, pan=0.0|
     var env = EnvGen.kr(
-        Env([0, 1, 0, 0.5, 0], [0.001, 0.01, 0.005, 0.15], -4),
+        Env([0, 1, 0, 0.5, 0], [0.001, 0.01, 0.005, 0.18], -4),
         doneAction: Done.freeSelf
     );
-    var sig = BPF.ar(WhiteNoise.ar, 1100, 0.7) * env * amp;
+    var sig = BPF.ar(WhiteNoise.ar, 900, 0.8) * env * amp;
+    sig = (sig * 1.4).softclip;
+    sig = LPF.ar(sig, 2500);
+    sig = sig + (PinkNoise.ar(0.005) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
+// ローファイ パーカッション (パッド上段右寄り, note 44-47)
+// くぐもった金属打楽器風
 SynthDef(\perc, { |freq=440, amp=0.6, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.3, 1, -5), doneAction: Done.freeSelf);
-    var sig = Mix([
-        SinOsc.ar(freq),
-        SinOsc.ar(freq * 2.76, 0, 0.3),
-        SinOsc.ar(freq * 5.4, 0, 0.1)
-    ]) * env * amp;
+    var env = EnvGen.kr(Env.perc(0.002, 0.25, 1, -5), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(freq) * 0.6 + (SinOsc.ar(freq * 2.3, 0, 0.2));
+    sig = sig * env * amp;
+    sig = (sig * 1.5).softclip;
+    sig = LPF.ar(sig, 2000);
+    sig = sig + (PinkNoise.ar(0.006) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(attack, release, 1, -3), doneAction: Done.freeSelf);
-    var sig = Mix([
-        Saw.ar(freq, 0.4),
-        Saw.ar(freq * 1.003, 0.3),
-        SinOsc.ar(freq * 0.5, 0, 0.3)
-    ]);
-    sig = RLPF.ar(sig, freq * 4, 0.5) * env * amp;
-    sig = FreeVerb.ar(sig, 0.4, 0.7);
+// ローファイ FX/スタブ (パッド最上段, note 48-51)
+// フィルタードコード風の一撃
+SynthDef(\fx, { |freq=440, amp=0.6, attack=0.02, release=0.4, pan=0.0|
+    var env = EnvGen.kr(Env.perc(attack, release, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(freq, 0, 0.4) + SinOsc.ar(freq * 1.5, 0, 0.25) + SinOsc.ar(freq * 2, 0, 0.15);
+    sig = sig * env * amp;
+    sig = (sig * 1.4).softclip;
+    sig = LPF.ar(sig, 1800);
+    sig = FreeVerb.ar(sig, 0.5, 0.8, 0.3);
+    sig = sig + (PinkNoise.ar(0.005) * env);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
