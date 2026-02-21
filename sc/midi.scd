@@ -31,6 +31,7 @@
         if (chan == 0) {  // ch1 = index 0
             freq = note.midicps * (1 + (~pitchBend * 2/12));
             amp  = vel / 127.0 * 0.7;
+            ("PIANO: note=" ++ note ++ " freq=" ++ freq ++ " amp=" ++ amp).postln;
             synth = Synth(\piano, [
                 \freq,      freq,
                 \amp,       amp,
@@ -42,6 +43,8 @@
                 \reverb,    ~params[\reverb],
                 \pan,       ((note - 60) / 36.0).clip(-1, 1)
             ]);
+            // デバッグ: \tone も同時に鳴らして \piano の問題を切り分け
+            Synth(\tone, [\freq, freq, \amp, amp, \attack, 0.01, \release, 0.5]);
             ~activePianos[note] = synth;
         };
     });
