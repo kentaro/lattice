@@ -98,13 +98,15 @@ SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
 }).add;
 
 // ─── 汎用: \tone (gol-synth など外部MIDI用) ────────────────────────────────
-SynthDef(\tone, { |freq=440, amp=0.3, attack=0.01, release=0.5, pan=0.0|
+SynthDef(\tone, { |freq=440, amp=0.3, attack=0.01, release=0.5,
+                   cutoff=8000, reverb=0.2, pan=0.0|
     var env = EnvGen.kr(
         Env.perc(attack, release, 1, -4),
         doneAction: Done.freeSelf
     );
-    var sig = SinOsc.ar(freq) * env * amp;
-    sig = sig + (SinOsc.ar(freq * 2, 0, 0.2) * env * amp);
+    var sig = SinOsc.ar(freq) + (SinOsc.ar(freq * 2, 0, 0.2));
+    sig = RLPF.ar(sig * env * amp, cutoff.clip(80, 18000), 0.5);
+    sig = FreeVerb.ar(sig, reverb, 0.7, 0.5);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 

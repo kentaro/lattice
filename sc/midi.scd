@@ -82,8 +82,10 @@
             Synth(\tone, [
                 \freq,    note.midicps,
                 \amp,     vel / 127.0 * 0.4,
-                \attack,  0.01,
-                \release, 0.5,
+                \attack,  ~params[\attack],
+                \release, ~params[\release],
+                \cutoff,  ~params[\cutoff],
+                \reverb,  ~params[\reverb],
                 \pan,     ((note - 60) / 36.0).clip(-1, 1)
             ]);
         };
