@@ -20,6 +20,11 @@
     // ─── CC値 → 実パラメーター変換 ────────────────────────────────────────
     ~ccToParam = { |ccVal|  ccVal / 127.0 };
 
+    // ─── DEBUG: 全 NoteOn を表示 ───────────────────────────────────────────
+    MIDIdef.noteOn(\debug, { |vel, note, chan|
+        ("MIDI NoteOn: ch=" ++ chan ++ " note=" ++ note ++ " vel=" ++ vel).postln;
+    });
+
     // ─── ch1 NoteOn → \piano ──────────────────────────────────────────────
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan|
         var freq, amp, synth;
