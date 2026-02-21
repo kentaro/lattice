@@ -8,8 +8,7 @@
     Server.default.options.sampleRate = 44100;
     Server.default.options.blockSize = 1024;
     Server.default.options.memSize = 65536;
-    // hw:1 = HDMI on Raspberry Pi (hw:0 is headphone jack)
-    Server.default.options.device = "hw:1,0";
+    // device は設定しない → jackd は ~/.jackdrc を読む (hw:1 = HDMI)
 
     Server.default.waitForBoot({
         "SuperCollider server booted.".postln;

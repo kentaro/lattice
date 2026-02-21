@@ -7,11 +7,18 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SC_MAIN="$SCRIPT_DIR/../sc/main.scd"
 
-# 既存の jackd / sclang を停止
+# FluidSynth は lattice に置き換えるため停止
+pkill fluidsynth 2>/dev/null || true
+
+# jackd を再起動させるために既存プロセスを停止
 pkill jackd 2>/dev/null || true
 pkill sclang 2>/dev/null || true
 sleep 1
 
-echo "[lattice] Starting SuperCollider (HDMI hw:1)..."
+# jackd のデフォルトデバイスを hw:1 (HDMI) に設定
+# hw:0 = bcm2835 Headphones, hw:1 = vc4-hdmi-0 (HDMI)
+echo "-d alsa -d hw:1 -r 44100 -p 1024 -n 2" > ~/.jackdrc
+
+echo "[lattice] Starting SuperCollider (HDMI via JACK hw:1)..."
 export QT_QPA_PLATFORM=offscreen
 exec sclang "$SC_MAIN"
