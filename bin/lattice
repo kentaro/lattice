@@ -18,4 +18,5 @@ if pactl info &>/dev/null; then
 fi
 
 echo "[lattice] Starting SuperCollider..."
+export QT_QPA_PLATFORM=offscreen
 exec sclang "$SC_MAIN"
