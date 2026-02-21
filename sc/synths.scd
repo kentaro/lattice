@@ -60,11 +60,12 @@ SynthDef(\openhat, { |amp=0.5, pan=0.0|
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-SynthDef(\tom, { |freq=120, amp=0.7, pan=0.0|
+SynthDef(\tom, { |freq=150, amp=0.7, pan=0.0|
     var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(freq * 2, freq, 0.12)) * env * amp;
-    // 倍音を足して小型スピーカーでも聞こえるように
-    sig = sig + (SinOsc.ar(freq * 2) * env * amp * 0.3);
+    var body = SinOsc.ar(XLine.kr(freq * 2, freq, 0.12));
+    var click = WhiteNoise.ar(0.3) * EnvGen.kr(Env.perc(0.001, 0.02));
+    var overtone = SinOsc.ar(freq * 2.4, 0, 0.15) * EnvGen.kr(Env.perc(0.003, 0.1));
+    var sig = (body + click + overtone) * env * amp;
     Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
 }).add;
 
