@@ -61,11 +61,14 @@ SynthDef(\openhat, { |amp=0.5, pan=0.0|
 }).add;
 
 SynthDef(\tom, { |freq=150, amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
-    var body = SinOsc.ar(XLine.kr(freq * 2, freq, 0.12));
-    var click = WhiteNoise.ar(0.3) * EnvGen.kr(Env.perc(0.001, 0.02));
-    var overtone = SinOsc.ar(freq * 2.4, 0, 0.15) * EnvGen.kr(Env.perc(0.003, 0.1));
-    var sig = (body + click + overtone) * env * amp;
+    var env = EnvGen.kr(Env.perc(0.005, 0.4, 1, -4), doneAction: Done.freeSelf);
+    // ヘッド打撃: ピッチダウンするサイン波 (キックと同じ手法)
+    var body = SinOsc.ar(XLine.kr(freq * 1.8, freq, 0.08)) * env;
+    // スティックのアタック: フィルタードノイズバースト
+    var stick = BPF.ar(WhiteNoise.ar, freq * 4, 0.5) * EnvGen.kr(Env.perc(0.001, 0.03)) * 0.5;
+    // シェル共鳴: 短い残響
+    var shell = BPF.ar(WhiteNoise.ar, freq * 1.5, 0.3) * EnvGen.kr(Env.perc(0.002, 0.12)) * 0.2;
+    var sig = (body + stick + shell) * amp;
     Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
 }).add;
 
