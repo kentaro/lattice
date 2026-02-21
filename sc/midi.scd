@@ -86,9 +86,22 @@
         };
     });
 
-    // ─── 汎用 NoteOn → \tone (Launchkey鍵盤・パッド以外の全ソース) ────────
+    // ─── ch16 NoteOn → \kalimba (代替音色チャンネル) ────────────────────────
+    MIDIdef.noteOn(\altOn, { |vel, note, chan, srcID|
+        if (chan == 15) {
+            Synth(\kalimba, [
+                \freq,    note.midicps,
+                \amp,     vel / 127.0 * 0.5,
+                \release, ~params[\release],
+                \reverb,  ~params[\reverb],
+                \pan,     ((note - 60) / 36.0).clip(-1, 1)
+            ]);
+        };
+    });
+
+    // ─── 汎用 NoteOn → \tone (その他全チャンネル) ─────────────────────────
     MIDIdef.noteOn(\genericOn, { |vel, note, chan, srcID|
-        if ((chan != 9) && (srcID != ~launchkeyUID)) {
+        if ((chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
             Synth(\tone, [
                 \freq,    note.midicps,
                 \amp,     vel / 127.0 * 0.5,

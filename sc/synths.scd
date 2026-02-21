@@ -136,4 +136,21 @@ SynthDef(\tone, { |freq=440, amp=0.3, attack=0.08, release=0.8,
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
+// ─── ch16用: \kalimba (カリンバ / 親指ピアノ) ────────────────────────────
+// ch1のエレピやch汎用のパッドと被らないコロコロした金属音
+SynthDef(\kalimba, { |freq=440, amp=0.4, release=1.2, reverb=0.3, pan=0.0|
+    var env = EnvGen.kr(Env.perc(0.001, release, 1, -8), doneAction: Done.freeSelf);
+    // 基音 + 非整数倍音 (金属的なキャラクター)
+    var sig = SinOsc.ar(freq, 0, 0.5)
+        + SinOsc.ar(freq * 3.01, 0, 0.15)
+        + SinOsc.ar(freq * 5.98, 0, 0.06);
+    // 短いアタックのクリック
+    var click = WhiteNoise.ar(0.2) * EnvGen.kr(Env.perc(0.0005, 0.008));
+    sig = (sig * env * amp) + (click * amp);
+    sig = LPF.ar(sig, 5000);
+    sig = (sig * 1.2).softclip;
+    sig = FreeVerb.ar(sig, reverb.max(0.3), 0.7, 0.4);
+    Out.ar(0, Pan2.ar(sig, pan));
+}).add;
+
 "synths.scd loaded.".postln;
