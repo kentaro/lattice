@@ -18,6 +18,22 @@
         // 各モジュールをロード
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
         thisProcess.interpreter.executeFile(dir +/+ "midi.scd");
+
+        // MIDI自動再接続 (USBデバイス抜き差し対応)
+        // 10秒ごとに新しいMIDIソースを検出して接続
+        ~midiReconnect = Task({
+            var prevCount = MIDIClient.sources.size;
+            loop {
+                10.wait;
+                MIDIClient.init(verbose: false);
+                if (MIDIClient.sources.size != prevCount) {
+                    MIDIIn.connectAll;
+                    ("MIDI reconnected. Sources: " ++ MIDIClient.sources.size).postln;
+                    prevCount = MIDIClient.sources.size;
+                };
+            };
+        }).play;
+
         "lattice ready.".postln;
     });
 )

@@ -35,64 +35,64 @@ SynthDef(\piano, { |freq=440, amp=0.5, detune=0.0, attack=0.01, release=1.0,
 // ─── パッド用: ドラム・パーカッション ─────────────────────────────────────
 
 SynthDef(\kick, { |amp=0.8, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.5, amp, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(120, 40, 0.08)) * env;
-    sig = sig + (WhiteNoise.ar(0.1) * EnvGen.kr(Env.perc(0.001, 0.05)));
+    var env = EnvGen.kr(Env.perc(0.005, 0.5, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(120, 40, 0.08)) * env * amp;
+    sig = sig + (WhiteNoise.ar(0.1) * EnvGen.kr(Env.perc(0.001, 0.05)) * amp);
     Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
 }).add;
 
 SynthDef(\snare, { |amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.2, amp, -4), doneAction: Done.freeSelf);
-    var tone = SinOsc.ar(180) * env * 0.4;
-    var noise = BPF.ar(WhiteNoise.ar, 1200, 0.8) * env * 0.8;
+    var env = EnvGen.kr(Env.perc(0.005, 0.2, 1, -4), doneAction: Done.freeSelf);
+    var tone = SinOsc.ar(180) * env * amp * 0.4;
+    var noise = BPF.ar(WhiteNoise.ar, 1200, 0.8) * env * amp * 0.8;
     Out.ar(0, Pan2.ar((tone + noise).clip2(0.9), pan));
 }).add;
 
 SynthDef(\hihat, { |amp=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.08, amp, -6), doneAction: Done.freeSelf);
-    var sig = HPF.ar(WhiteNoise.ar, 8000) * env;
+    var env = EnvGen.kr(Env.perc(0.001, 0.08, 1, -6), doneAction: Done.freeSelf);
+    var sig = HPF.ar(WhiteNoise.ar, 8000) * env * amp;
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\openhat, { |amp=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.4, amp, -4), doneAction: Done.freeSelf);
-    var sig = HPF.ar(WhiteNoise.ar, 6000) * env;
+    var env = EnvGen.kr(Env.perc(0.001, 0.4, 1, -4), doneAction: Done.freeSelf);
+    var sig = HPF.ar(WhiteNoise.ar, 6000) * env * amp;
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\tom, { |freq=80, amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.3, amp, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.15)) * env;
+    var env = EnvGen.kr(Env.perc(0.005, 0.3, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.15)) * env * amp;
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\clap, { |amp=0.6, pan=0.0|
     var env = EnvGen.kr(
-        Env([0, amp, 0, amp*0.5, 0], [0.001, 0.01, 0.005, 0.15], -4),
+        Env([0, 1, 0, 0.5, 0], [0.001, 0.01, 0.005, 0.15], -4),
         doneAction: Done.freeSelf
     );
-    var sig = BPF.ar(WhiteNoise.ar, 1100, 0.7) * env;
+    var sig = BPF.ar(WhiteNoise.ar, 1100, 0.7) * env * amp;
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\perc, { |freq=440, amp=0.6, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.001, 0.3, amp, -5), doneAction: Done.freeSelf);
+    var env = EnvGen.kr(Env.perc(0.001, 0.3, 1, -5), doneAction: Done.freeSelf);
     var sig = Mix([
         SinOsc.ar(freq),
         SinOsc.ar(freq * 2.76, 0, 0.3),
         SinOsc.ar(freq * 5.4, 0, 0.1)
-    ]) * env;
+    ]) * env * amp;
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
 SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
-    var env = EnvGen.kr(Env.perc(attack, release, amp, -3), doneAction: Done.freeSelf);
+    var env = EnvGen.kr(Env.perc(attack, release, 1, -3), doneAction: Done.freeSelf);
     var sig = Mix([
         Saw.ar(freq, 0.4),
         Saw.ar(freq * 1.003, 0.3),
         SinOsc.ar(freq * 0.5, 0, 0.3)
     ]);
-    sig = RLPF.ar(sig, freq * 4, 0.5) * env;
+    sig = RLPF.ar(sig, freq * 4, 0.5) * env * amp;
     sig = FreeVerb.ar(sig, 0.4, 0.7);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
