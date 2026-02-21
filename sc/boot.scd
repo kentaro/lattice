@@ -12,8 +12,16 @@
     Server.default.waitForBoot({
         "SuperCollider server booted.".postln;
         MIDIClient.init;
-        MIDIIn.connectAll;
-        "MIDI initialized. Connected all devices.".postln;
+        // MIDIIn.connectAll はソース数が多いとIndex out of rangeになるため
+        // 個別に安全に接続する
+        MIDIClient.sources.do { |src, i|
+            try {
+                MIDIIn.connect(i, src);
+            } { |err|
+                ("MIDI connect skipped: " ++ src.device).postln;
+            };
+        };
+        "MIDI initialized.".postln;
 
         // 各モジュールをロード
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
