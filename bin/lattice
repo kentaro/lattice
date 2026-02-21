@@ -19,14 +19,39 @@ if command -v pactl &>/dev/null; then
     pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null || true
 fi
 
+# MIDI自動接続デーモン (USBデバイスの抜き差しに対応)
+# 5秒ごとに全ハードウェアMIDIソースをSuperColliderに接続 (冪等)
+midi_connect_loop() {
+    sleep 12  # SC起動を待つ
+    echo "[lattice] MIDI auto-connect started"
+    while pgrep -x sclang >/dev/null 2>&1; do
+        # SCのクライアント番号を検出
+        sc_client=$(aconnect -o 2>/dev/null | grep 'SuperCollider' | head -1 | sed "s/client \([0-9]*\):.*/\1/")
+        if [ -n "$sc_client" ]; then
+            # 全入力クライアント(kernel型=ハードウェア)をSCに接続
+            aconnect -i 2>/dev/null | grep 'type=kernel' | grep -v 'System' | while read line; do
+                hw_client=$(echo "$line" | sed "s/client \([0-9]*\):.*/\1/")
+                # そのクライアントの全ポートを接続
+                aconnect -i 2>/dev/null | sed -n "/^client ${hw_client}:/,/^client /p" | grep "^    [0-9]" | while read pline; do
+                    port=$(echo "$pline" | sed "s/^    \([0-9]*\) .*/\1/")
+                    aconnect "${hw_client}:${port}" "${sc_client}:0" 2>/dev/null || true
+                done
+            done
+        fi
+        sleep 5
+    done
+}
+
 echo "[lattice] Starting SuperCollider..."
 
 # PipeWire がある場合は pw-jack 経由 (HDMI対応)
 # なければ素の sclang (JACK が hw:0 等を自動選択)
 if command -v pw-jack &>/dev/null; then
     echo "[lattice] Using PipeWire JACK"
+    midi_connect_loop &
     exec pw-jack sclang "$SC_MAIN"
 else
     echo "[lattice] Using native JACK"
+    midi_connect_loop &
     exec sclang "$SC_MAIN"
 fi

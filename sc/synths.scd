@@ -60,10 +60,12 @@ SynthDef(\openhat, { |amp=0.5, pan=0.0|
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-SynthDef(\tom, { |freq=80, amp=0.7, pan=0.0|
-    var env = EnvGen.kr(Env.perc(0.005, 0.3, 1, -4), doneAction: Done.freeSelf);
-    var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.15)) * env * amp;
-    Out.ar(0, Pan2.ar(sig, pan));
+SynthDef(\tom, { |freq=120, amp=0.7, pan=0.0|
+    var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(freq * 2, freq, 0.12)) * env * amp;
+    // 倍音を足して小型スピーカーでも聞こえるように
+    sig = sig + (SinOsc.ar(freq * 2) * env * amp * 0.3);
+    Out.ar(0, Pan2.ar(sig.clip2(0.9), pan));
 }).add;
 
 SynthDef(\clap, { |amp=0.6, pan=0.0|
@@ -98,15 +100,25 @@ SynthDef(\fx, { |freq=440, amp=0.6, attack=0.05, release=0.5, pan=0.0|
 }).add;
 
 // ─── 汎用: \tone (gol-synth など外部MIDI用) ────────────────────────────────
+// 温かみのあるアナログ風パッドサウンド
 SynthDef(\tone, { |freq=440, amp=0.3, attack=0.01, release=0.5,
                    cutoff=8000, reverb=0.2, pan=0.0|
     var env = EnvGen.kr(
         Env.perc(attack, release, 1, -4),
         doneAction: Done.freeSelf
     );
-    var sig = SinOsc.ar(freq) + (SinOsc.ar(freq * 2, 0, 0.2));
-    sig = RLPF.ar(sig * env * amp, cutoff.clip(80, 18000), 0.5);
-    sig = FreeVerb.ar(sig, reverb, 0.7, 0.5);
+    // デチューンした複数オシレーターで厚みを出す
+    var sig = Mix([
+        Saw.ar(freq * 0.998, 0.3),
+        Pulse.ar(freq * 1.002, 0.4, 0.25),
+        SinOsc.ar(freq * 0.5, 0, 0.2)  // サブオクターブ
+    ]);
+    // フィルターエンベロープ (アタック時にブライト→暗くなる)
+    var filtEnv = EnvGen.kr(Env.perc(attack, release * 0.6, 1, -3));
+    var filtFreq = cutoff * (0.3 + (filtEnv * 0.7));
+    sig = RLPF.ar(sig, filtFreq.clip(80, 18000), 0.4);
+    sig = sig * env * amp;
+    sig = FreeVerb.ar(sig, reverb, 0.8, 0.4);
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
