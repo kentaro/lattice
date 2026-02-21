@@ -60,7 +60,18 @@ SynthDef(\openhat, { |amp=0.5, pan=0.0|
     Out.ar(0, Pan2.ar(sig, pan));
 }).add;
 
-// kickと同じ構造: ピッチドロップSinOsc + ノイズバーストのアタック
+// ローファイバスドラ: ビットクラッシュ + サチュレーション
+SynthDef(\lofikick, { |freq=50, amp=0.8, pan=0.0|
+    var env = EnvGen.kr(Env.perc(0.005, 0.4, 1, -4), doneAction: Done.freeSelf);
+    var sig = SinOsc.ar(XLine.kr(freq * 3, freq, 0.06)) * env * amp;
+    sig = sig + (WhiteNoise.ar(0.15) * EnvGen.kr(Env.perc(0.001, 0.04)) * amp);
+    // ビットクラッシュ (ローファイ感)
+    sig = (sig * 8).round(1) / 8;
+    // サチュレーション
+    sig = (sig * 3).tanh;
+    Out.ar(0, Pan2.ar(sig, pan));
+}).add;
+
 SynthDef(\tom, { |freq=150, amp=0.7, pan=0.0|
     var env = EnvGen.kr(Env.perc(0.005, 0.35, 1, -4), doneAction: Done.freeSelf);
     var sig = SinOsc.ar(XLine.kr(freq * 1.5, freq, 0.08)) * env * amp;

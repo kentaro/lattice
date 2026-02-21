@@ -68,9 +68,9 @@
             { note == 37 } { Synth(\snare,   [\amp, amp]) }
             { note == 38 } { Synth(\hihat,   [\amp, amp]) }
             { note == 39 } { Synth(\openhat, [\amp, amp]) }
-            { note == 40 } { Synth(\tom, [\freq, 150, \amp, amp]) }
-            { note == 41 } { Synth(\tom, [\freq, 200, \amp, amp]) }
-            { note == 42 } { Synth(\tom, [\freq, 260, \amp, amp]) }
+            { note == 40 } { Synth(\lofikick, [\freq, 55, \amp, amp]) }
+            { note == 41 } { Synth(\lofikick, [\freq, 45, \amp, amp]) }
+            { note == 42 } { Synth(\lofikick, [\freq, 65, \amp, amp]) }
             { note == 43 } { Synth(\clap,    [\amp, amp]) }
             { (note >= 44) && (note <= 47) } {
                 Synth(\perc, [\freq, (note - 44 * 5 + 48).midicps, \amp, amp])
