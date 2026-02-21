@@ -5,10 +5,9 @@
 
     Server.default.options.numOutputBusChannels = 2;
     Server.default.options.numInputBusChannels = 0;
-    Server.default.options.sampleRate = 44100;
+    Server.default.options.sampleRate = 48000;
     Server.default.options.blockSize = 1024;
     Server.default.options.memSize = 65536;
-    // device は設定しない → jackd は ~/.jackdrc を読む (hw:1 = HDMI)
 
     Server.default.waitForBoot({
         "SuperCollider server booted.".postln;

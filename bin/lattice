@@ -12,19 +12,16 @@ pkill jackd 2>/dev/null || true
 pkill sclang 2>/dev/null || true
 sleep 1
 
-# HDMI出力で JACK を起動する設定
-# ~/.jackdrc は scsynth が jackd を自動起動する際に読む (フルパス必須)
-JACKD=$(command -v jackd)
-# plughw:1 = ALSA plugin layer が IEC958 フォーマット変換を行う
-echo "$JACKD -d alsa -d plughw:1 -r 44100 -p 1024 -n 2" > ~/.jackdrc
-
 export QT_QPA_PLATFORM=offscreen
 
-echo "[lattice] Starting SuperCollider (HDMI via JACK hw:1)..."
+echo "[lattice] Starting SuperCollider..."
 
-# PulseAudio がデバイスを占有している場合、pasuspender で一時解放
-if command -v pasuspender &>/dev/null && pulseaudio --check 2>/dev/null; then
-    exec pasuspender -- sclang "$SC_MAIN"
+# PipeWire がある場合は pw-jack 経由 (HDMI対応)
+# なければ素の sclang (JACK が hw:0 等を自動選択)
+if command -v pw-jack &>/dev/null; then
+    echo "[lattice] Using PipeWire JACK"
+    exec pw-jack sclang "$SC_MAIN"
 else
+    echo "[lattice] Using native JACK"
     exec sclang "$SC_MAIN"
 fi
