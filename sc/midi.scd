@@ -34,7 +34,7 @@
         var freq, amp, synth;
         if (srcID == ~launchkeyUID) {
             freq = note.midicps * (1 + (~pitchBend * 2/12));
-            amp  = vel / 127.0 * 0.7;
+            amp  = vel / 127.0 * 0.4;
             synth = Synth(\piano, [
                 \freq,      freq,
                 \amp,       amp,
@@ -60,7 +60,7 @@
 
     // ─── ch10 NoteOn → ドラム/パーカッション ──────────────────────────────
     MIDIdef.noteOn(\padOn, { |vel, note, chan|
-        var amp = vel / 127.0;
+        var amp = vel / 127.0 * 0.5;
         if (chan == 9) {  // ch10 = index 9
             ("PAD: note=" ++ note ++ " vel=" ++ vel ++ " amp=" ++ amp).postln;
             case

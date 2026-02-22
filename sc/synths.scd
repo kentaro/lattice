@@ -20,7 +20,7 @@ SynthDef(\piano, { |freq=440, amp=0.5, detune=0.0, attack=0.01, release=1.0,
     filtered = RLPF.ar(sig, cutoff.clip(80, 18000), resonance.clip(0.01, 1.0));
 
     // テープサチュレーション
-    filtered = (filtered * 1.3).softclip;
+    filtered = (filtered * 1.0).softclip;
 
     // リバーブ
     verb = FreeVerb.ar(filtered, reverb, 0.8, 0.5);

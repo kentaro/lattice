@@ -21,6 +21,16 @@
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
         thisProcess.interpreter.executeFile(dir +/+ "midi.scd");
 
+        // マスターリミッター (クリッピング防止)
+        SynthDef(\limiter, {
+            var sig = In.ar(0, 2);
+            sig = Limiter.ar(sig, 0.9, 0.01);
+            ReplaceOut.ar(0, sig);
+        }).add;
+        Server.default.sync;
+        Synth(\limiter, addAction: \addToTail);
+        "Master limiter added.".postln;
+
         "lattice ready.".postln;
     });
 )
