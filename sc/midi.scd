@@ -164,49 +164,57 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Aftertouch (channel pressure → cutoff modulation)
+    // Aftertouch (channel pressure → cutoff modulation) — 間引き
     // ═══════════════════════════════════════════════════════════════════════════
+    ~lastTouch = 0;
     MIDIdef.touch(\aftertouch, { |val, chan, srcID|
         if (srcID == ~launchkeyUID) {
-            var cutoffOffset = val / 127.0 * 4000;
-            var newCutoff = (~params[\cutoff] + cutoffOffset).clip(80, 18000);
-            ~activeVoices.do { |synth|
-                synth.set(\cutoff, newCutoff);
-            };
-            ~sustainedNotes.do { |synth|
-                synth.set(\cutoff, newCutoff);
+            if ((val - ~lastTouch).abs >= 4) {
+                var cutoffOffset, newCutoff;
+                ~lastTouch = val;
+                cutoffOffset = val / 127.0 * 4000;
+                newCutoff = (~params[\cutoff] + cutoffOffset).clip(80, 18000);
+                ~activeVoices.do { |synth| synth.set(\cutoff, newCutoff) };
+                ~sustainedNotes.do { |synth| synth.set(\cutoff, newCutoff) };
             };
         };
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Mod Strip (CC1 → vibrato depth)
+    // Mod Strip (CC1 → vibrato depth) — 間引き
     // ═══════════════════════════════════════════════════════════════════════════
+    ~lastMod = 0;
     MIDIdef.cc(\modStrip, { |val, num, chan, srcID|
         if ((num == 1) && (srcID == ~launchkeyUID)) {
-            ~modValue = val / 127.0;
-            ~activeVoices.do { |synth|
-                synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
-            };
-            ~sustainedNotes.do { |synth|
-                synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
+            if ((val - ~lastMod).abs >= 4) {
+                ~lastMod = val;
+                ~modValue = val / 127.0;
+                ~activeVoices.do { |synth|
+                    synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
+                };
+                ~sustainedNotes.do { |synth|
+                    synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
+                };
             };
         };
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Pitch Bend (±2 semitones)
+    // Pitch Bend (±2 semitones) — 量子化して負荷軽減
     // ═══════════════════════════════════════════════════════════════════════════
+    ~lastBendVal = 8192;  // 前回送信値を記録
     MIDIdef.bend(\pitchBend, { |val, chan, srcID|
         if (srcID == ~launchkeyUID) {
-            ~pitchBend = (val - 8192) / 8192.0;
-            ~activeVoices.keysValuesDo { |note, synth|
-                var newFreq = note.midicps * (1 + (~pitchBend * 2/12));
-                synth.set(\freq, newFreq);
-            };
-            ~sustainedNotes.keysValuesDo { |note, synth|
-                var newFreq = note.midicps * (1 + (~pitchBend * 2/12));
-                synth.set(\freq, newFreq);
+            // 64段階に量子化（128刻み）— 変化が小さい時はスキップ
+            if ((val - ~lastBendVal).abs >= 128) {
+                ~lastBendVal = val;
+                ~pitchBend = (val - 8192) / 8192.0;
+                ~activeVoices.keysValuesDo { |note, synth|
+                    synth.set(\freq, note.midicps * (1 + (~pitchBend * 2/12)));
+                };
+                ~sustainedNotes.keysValuesDo { |note, synth|
+                    synth.set(\freq, note.midicps * (1 + (~pitchBend * 2/12)));
+                };
             };
         };
     });
