@@ -37,7 +37,7 @@
     // 10ms以内の同一note同一typeイベントは無視。
     ~lastNoteOnTime  = Dictionary.new;
     ~lastNoteOffTime = Dictionary.new;
-    ~dedupWindow     = 0.01;  // 10ms
+    ~dedupWindow     = 0.03;  // 30ms
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Launchkey UID detection (Launchkey ソースUID検出)
