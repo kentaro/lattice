@@ -29,7 +29,6 @@
     // Preset / mode state (プリセット/モード状態)
     // ═══════════════════════════════════════════════════════════════════════════
     ~currentPreset = \rhodes;           // default keyboard preset
-    ~knobMode      = \sound;            // \sound or \fx
     ~pitchBend     = 0.0;              // -1.0 ~ +1.0 (±2 semitones)
     ~modValue      = 0.0;              // 0.0 ~ 1.0
 
@@ -290,114 +289,107 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Knob Mode Toggle (CC29 — toggle between \sound and \fx)
+    // Knobs Page 1 (CC21-28) — Sound パラメーター
+    // Launchkey Custom Encoder Page 1 → 上下ボタンでPage切替
     // ═══════════════════════════════════════════════════════════════════════════
-    MIDIdef.cc(\knobModeToggle, { |val, num, chan, srcID|
-        if ((num == 29) && (srcID == ~launchkeyUID)) {
-            if (val >= 64) {
-                ~knobMode = if (~knobMode == \sound) { \fx } { \sound };
-                ("Knob mode: " ++ ~knobMode).postln;
+    MIDIdef.cc(\knobsSound, { |val, num, chan, srcID|
+        var norm = val / 127.0;
+
+        if ((num >= 21) && (num <= 28) && (srcID == ~launchkeyUID)) {
+            case
+            { num == 21 } {
+                // Cutoff (80-18000, exponential)
+                ~params[\cutoff] = norm.linexp(0, 1, 80, 18000);
+                ~activeVoices.do { |s| s.set(\cutoff, ~params[\cutoff]) };
+                ~sustainedNotes.do { |s| s.set(\cutoff, ~params[\cutoff]) };
+            }
+            { num == 22 } {
+                // Resonance (0.01-0.99, linear)
+                ~params[\resonance] = norm.linlin(0, 1, 0.01, 0.99);
+                ~activeVoices.do { |s| s.set(\resonance, ~params[\resonance]) };
+                ~sustainedNotes.do { |s| s.set(\resonance, ~params[\resonance]) };
+            }
+            { num == 23 } {
+                // Attack (0.001-2.0, exponential)
+                ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
+            }
+            { num == 24 } {
+                // Release (0.05-5.0, exponential)
+                ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
+            }
+            { num == 25 } {
+                // Reverb Send (0-1, linear)
+                ~params[\reverbSend] = norm;
+                ~activeVoices.do { |s| s.set(\reverbSend, norm) };
+                ~sustainedNotes.do { |s| s.set(\reverbSend, norm) };
+            }
+            { num == 26 } {
+                // Delay Send (0-1, linear)
+                ~params[\delaySend] = norm;
+                ~activeVoices.do { |s| s.set(\delaySend, norm) };
+                ~sustainedNotes.do { |s| s.set(\delaySend, norm) };
+            }
+            { num == 27 } {
+                // Tape Drive → masterFX
+                ~fxParams[\tapeDrive] = norm;
+                ~masterFXSynth.set(\tapeDrive, norm);
+            }
+            { num == 28 } {
+                // Master volume → masterFX
+                ~params[\volume] = norm;
+                ~masterFXSynth.set(\masterVol, norm);
             };
         };
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Knobs CC21-28 — Mode A (\sound) / Mode B (\fx)
+    // Knobs Page 2 (CC29-36) — FX パラメーター
+    // Launchkey Custom Encoder Page 2 → 上下ボタンでPage切替
     // ═══════════════════════════════════════════════════════════════════════════
-    MIDIdef.cc(\knobs, { |val, num, chan, srcID|
+    MIDIdef.cc(\knobsFX, { |val, num, chan, srcID|
         var norm = val / 127.0;
 
-        if ((num >= 21) && (num <= 28) && (srcID == ~launchkeyUID)) {
-            if (~knobMode == \sound) {
-                // ─── Mode A: Sound parameters ──────────────────────────────
-                case
-                { num == 21 } {
-                    // Cutoff (80-18000, exponential)
-                    ~params[\cutoff] = norm.linexp(0, 1, 80, 18000);
-                    ~activeVoices.do { |s| s.set(\cutoff, ~params[\cutoff]) };
-                    ~sustainedNotes.do { |s| s.set(\cutoff, ~params[\cutoff]) };
-                }
-                { num == 22 } {
-                    // Resonance (0.01-0.99, linear)
-                    ~params[\resonance] = norm.linlin(0, 1, 0.01, 0.99);
-                    ~activeVoices.do { |s| s.set(\resonance, ~params[\resonance]) };
-                    ~sustainedNotes.do { |s| s.set(\resonance, ~params[\resonance]) };
-                }
-                { num == 23 } {
-                    // Attack (0.001-2.0, exponential)
-                    ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
-                }
-                { num == 24 } {
-                    // Release (0.05-5.0, exponential)
-                    ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
-                }
-                { num == 25 } {
-                    // Reverb Send (0-1, linear)
-                    ~params[\reverbSend] = norm;
-                    ~activeVoices.do { |s| s.set(\reverbSend, norm) };
-                    ~sustainedNotes.do { |s| s.set(\reverbSend, norm) };
-                }
-                { num == 26 } {
-                    // Delay Send (0-1, linear)
-                    ~params[\delaySend] = norm;
-                    ~activeVoices.do { |s| s.set(\delaySend, norm) };
-                    ~sustainedNotes.do { |s| s.set(\delaySend, norm) };
-                }
-                { num == 27 } {
-                    // Tape Drive → masterFX
-                    ~fxParams[\tapeDrive] = norm;
-                    ~masterFXSynth.set(\tapeDrive, norm);
-                }
-                { num == 28 } {
-                    // Master volume → masterFX
-                    ~params[\volume] = norm;
-                    ~masterFXSynth.set(\masterVol, norm);
-                };
-            } {
-                // ─── Mode B: FX parameters ─────────────────────────────────
-                case
-                { num == 21 } {
-                    // Reverb Size
-                    ~fxParams[\reverbSize] = norm.linlin(0, 1, 0.1, 1.0);
-                    ~reverbFXSynth.set(\size, ~fxParams[\reverbSize]);
-                }
-                { num == 22 } {
-                    // Reverb Damp
-                    ~fxParams[\reverbDamp] = norm;
-                    ~reverbFXSynth.set(\damp, ~fxParams[\reverbDamp]);
-                }
-                { num == 23 } {
-                    // Delay Time
-                    ~fxParams[\delayTime] = norm.linexp(0, 1, 0.05, 1.0);
-                    ~delayFXSynth.set(\delayTime, ~fxParams[\delayTime]);
-                }
-                { num == 24 } {
-                    // Delay Feedback
-                    ~fxParams[\delayFB] = norm.linlin(0, 1, 0.0, 0.9);
-                    ~delayFXSynth.set(\feedback, ~fxParams[\delayFB]);
-                }
-                { num == 25 } {
-                    // Tape Drive
-                    ~fxParams[\tapeDrive] = norm.linlin(0, 1, 0.0, 1.0);
-                    ~masterFXSynth.set(\tapeDrive, ~fxParams[\tapeDrive]);
-                }
-                { num == 26 } {
-                    // (reserved)
-                }
-                { num == 27 } {
-                    // LFO Rate (stored for synth use)
-                    ~fxParams[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
-                    ~params[\lfoRate] = ~fxParams[\lfoRate];
-                    ~activeVoices.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
-                    ~sustainedNotes.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
-                }
-                { num == 28 } {
-                    // LFO Depth (stored for synth use)
-                    ~fxParams[\lfoDepth] = norm;
-                    ~params[\lfoDepth] = norm;
-                    ~activeVoices.do { |s| s.set(\vibDepth, ~modValue * norm) };
-                    ~sustainedNotes.do { |s| s.set(\vibDepth, ~modValue * norm) };
-                };
+        if ((num >= 29) && (num <= 36) && (srcID == ~launchkeyUID)) {
+            case
+            { num == 29 } {
+                // Reverb Size (0.1-1.0)
+                ~fxParams[\reverbSize] = norm.linlin(0, 1, 0.1, 1.0);
+                ~reverbFXSynth.set(\size, ~fxParams[\reverbSize]);
+            }
+            { num == 30 } {
+                // Reverb Damp (0-1)
+                ~fxParams[\reverbDamp] = norm;
+                ~reverbFXSynth.set(\damp, ~fxParams[\reverbDamp]);
+            }
+            { num == 31 } {
+                // Delay Time (0.05-1.0s, exponential)
+                ~fxParams[\delayTime] = norm.linexp(0, 1, 0.05, 1.0);
+                ~delayFXSynth.set(\delayTime, ~fxParams[\delayTime]);
+            }
+            { num == 32 } {
+                // Delay Feedback (0-0.9)
+                ~fxParams[\delayFB] = norm.linlin(0, 1, 0.0, 0.9);
+                ~delayFXSynth.set(\feedback, ~fxParams[\delayFB]);
+            }
+            { num == 33 } {
+                // LFO Rate (0.1-20Hz, exponential)
+                ~fxParams[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
+                ~params[\lfoRate] = ~fxParams[\lfoRate];
+                ~activeVoices.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
+                ~sustainedNotes.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
+            }
+            { num == 34 } {
+                // LFO Depth (0-1)
+                ~fxParams[\lfoDepth] = norm;
+                ~params[\lfoDepth] = norm;
+                ~activeVoices.do { |s| s.set(\vibDepth, ~modValue * norm) };
+                ~sustainedNotes.do { |s| s.set(\vibDepth, ~modValue * norm) };
+            }
+            { num == 35 } {
+                // (reserved)
+            }
+            { num == 36 } {
+                // (reserved)
             };
         };
     });

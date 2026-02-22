@@ -25,7 +25,7 @@ systemctl --user restart lattice
 [外部]   → toneBus ────┤                                          │
                        └──────────────────────────────────────────┘
                                                                    │
-                                 [MasterFX: Chorus → Tape → Limiter]
+                                    [MasterFX: Tape → Limiter]
                                              ↓
                                       Hardware Out (0-1)
 ```
@@ -64,11 +64,12 @@ systemctl --user restart lattice
 | 39   | HiHat (open) | 43   | Snap |
 | 44-47 | Metallic Perc (ピッチ可変) | | |
 
-## ノブ（CC21-28）— 2モード
+## ノブ — 2ページ（上下ボタンで切替）
 
-**CC29 でモード切替**（トグル）。現在のモードはコンソールに表示される。
+Launchkey の Custom Encoder Mode を使用。上下ボタン（Encoder Bank Next/Previous）でページ切替。
+Novation Components で Custom Encoder Mode 1 に Page 1: CC21-28 / Page 2: CC29-36 を設定すること。
 
-### Mode A: Sound
+### Page 1: Sound (CC21-28)
 
 | ノブ | CC | パラメーター | 範囲 |
 |------|-----|------------|------|
@@ -78,21 +79,21 @@ systemctl --user restart lattice
 | 4 | 24 | Release | 0.05-5.0s (exp) |
 | 5 | 25 | Reverb Send | 0-1 |
 | 6 | 26 | Delay Send | 0-1 |
-| 7 | 27 | Chorus | 0.1-3.0 rate |
+| 7 | 27 | Tape Drive | 0-1 |
 | 8 | 28 | Master Volume | 0-1 |
 
-### Mode B: FX
+### Page 2: FX (CC29-36)
 
 | ノブ | CC | パラメーター | 範囲 |
 |------|-----|------------|------|
-| 1 | 21 | Reverb Size | 0.1-1.0 |
-| 2 | 22 | Reverb Damp | 0-1 |
-| 3 | 23 | Delay Time | 0.05-1.0s (exp) |
-| 4 | 24 | Delay Feedback | 0-0.9 |
-| 5 | 25 | Chorus Rate | 0.1-5.0 |
-| 6 | 26 | Tape Drive | 0-1 |
-| 7 | 27 | LFO Rate | 0.1-20Hz (exp) |
-| 8 | 28 | LFO Depth | 0-1 |
+| 1 | 29 | Reverb Size | 0.1-1.0 |
+| 2 | 30 | Reverb Damp | 0-1 |
+| 3 | 31 | Delay Time | 0.05-1.0s (exp) |
+| 4 | 32 | Delay Feedback | 0-0.9 |
+| 5 | 33 | LFO Rate | 0.1-20Hz (exp) |
+| 6 | 34 | LFO Depth | 0-1 |
+| 7 | 35 | (reserved) | — |
+| 8 | 36 | (reserved) | — |
 
 ## 外部MIDIデバイス
 
@@ -101,9 +102,9 @@ systemctl --user restart lattice
 | ch1 (Launchkey) | 現在のプリセット | gate-based ADSR |
 | ch10 | ドラム / プリセット切替 | ワンショット |
 | ch16 | Kalimba | パーカッシブ (fire-and-forget) |
-| その他 | Tone (三角波パッド) | gate-based ADSR |
+| その他 | Tone (三角波パッド) | パーカッシブ (fire-and-forget) |
 
-gol-synth 等の外部デバイスはそのまま接続可能（NoteOff でリリース）。
+gol-synth 等の外部デバイスはそのまま接続可能（NoteOnで発音、自然に減衰）。
 
 ## ディレクトリ構成
 
