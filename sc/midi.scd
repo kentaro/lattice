@@ -36,12 +36,54 @@
     // Launchkey UID detection (Launchkey ソースUID検出)
     // ═══════════════════════════════════════════════════════════════════════════
     ~launchkeyUID = nil;
+    ~launchkeyOut = nil;
     MIDIClient.sources.do { |src|
         if (src.device.containsi("Launchkey") && src.name.containsi("MIDI In")) {
             ~launchkeyUID = src.uid;
             ("Launchkey detected: uid=" ++ src.uid).postln;
         };
     };
+    MIDIClient.destinations.do { |dst, i|
+        if (dst.device.containsi("Launchkey") && dst.name.containsi("MIDI In")) {
+            ~launchkeyOut = MIDIOut(i, dst.uid);
+            ("Launchkey MIDIOut: port=" ++ i).postln;
+        };
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Pad LED: プリセット表示 (パッド上段 48-51 の色で現在のプリセットを示す)
+    // カラーパレット: Programmer's Reference の Colour Palette 参照
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~presetPads = Dictionary[
+        \rhodes     -> 48,
+        \wurlitzer  -> 49,
+        \analogPad  -> 50,
+        \lead       -> 51
+    ];
+    ~presetColors = Dictionary[
+        \rhodes     -> 21,   // green
+        \wurlitzer  -> 9,    // orange
+        \analogPad  -> 37,   // blue
+        \lead       -> 5     // red
+    ];
+    ~dimColor = 1;  // dim white (inactive)
+
+    ~updatePadLEDs = {
+        if (~launchkeyOut.notNil) {
+            ~presetPads.keysValuesDo { |preset, note|
+                if (preset == ~currentPreset) {
+                    // active: pulsing colour (ch12 = channel 11 in 0-indexed)
+                    ~launchkeyOut.noteOn(11, note, ~presetColors[preset]);
+                } {
+                    // inactive: dim stationary (ch10 = channel 9)
+                    ~launchkeyOut.noteOn(9, note, ~dimColor);
+                };
+            };
+        };
+    };
+
+    // 起動時にLED更新
+    ~updatePadLEDs.();
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Helper: ~spawnVoice — キーボードボイス生成
@@ -233,6 +275,7 @@
             if (newPreset.notNil && (newPreset != ~currentPreset)) {
                 ~releaseAllVoices.();
                 ~currentPreset = newPreset;
+                ~updatePadLEDs.();
                 ("Preset: " ++ newPreset).postln;
             };
         };
