@@ -114,11 +114,17 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOn (Launchkey → current preset)
-    // ch10(chan==9)を除外 — ドラムパッドがキーボードシンセを生成するのを防止
+    // Keyboard NoteOn (Launchkey ch1のみ)
+    // ch1(chan==0)限定 — 他チャンネルからの誤発音を完全防止
+    // vel>0 チェック — Launchkeyの vel=0 NoteOff がシンセ生成するのを防止
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
-        if ((chan != 9) && (srcID == ~launchkeyUID)) {
+        if ((vel > 0) && (chan == 0) && (srcID == ~launchkeyUID)) {
+            // 安全弁: ボイス数が暴走したら全解放
+            if (~activeVoices.size > 24) {
+                "WARNING: voice count exceeded 24, releasing all".postln;
+                ~releaseAllVoices.();
+            };
             // 同じノートが既に鳴っていたら先にリリース
             if (~activeVoices[note].notNil) {
                 ~activeVoices[note].set(\gate, 0);
@@ -134,10 +140,10 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOff (Launchkey, ch10除外)
+    // Keyboard NoteOff (Launchkey ch1のみ)
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
-        if ((chan != 9) && (srcID == ~launchkeyUID)) {
+        if ((chan == 0) && (srcID == ~launchkeyUID)) {
             ~heldNotes.remove(note);
             ~releaseVoice.(note);
         };
@@ -219,19 +225,21 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Preset Selection (ch10, right 2 columns: 38,39,42,43,46,47,50,51)
+    // Preset Selection (ch10, right 4 columns: 40-43, 48-51)
+    // 2行×8列レイアウト: Bottom 36-43, Top 44-51
+    // 右4列 = プリセット: Bottom 40-43, Top 48-51
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
             var presets = Dictionary[
-                38 -> \grandPiano,
-                39 -> \rhodes,
+                40 -> \grandPiano,
+                41 -> \rhodes,
                 42 -> \wurlitzer,
                 43 -> \organ,
-                46 -> \strings,
-                47 -> \guitar,
-                50 -> \analogPad,
-                51 -> \lead
+                48 -> \analogPad,
+                49 -> \lead,
+                50 -> \strings,
+                51 -> \guitar
             ];
             var newPreset = presets[note];
             if (newPreset.notNil && (newPreset != ~currentPreset)) {
@@ -243,12 +251,14 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Drum Pads (ch10, left 2 columns: 36,37,40,41,44,45,48,49)
+    // Drum Pads (ch10, left 4 columns: 36-39, 44-47)
+    // 2行×8列レイアウト: Bottom 36-43, Top 44-51
+    // 左4列 = ドラム: Bottom 36-39, Top 44-47
     // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
         var normVel = vel / 127.0;
-        var drumNotes = Set[36, 37, 40, 41, 44, 45, 48, 49];
+        var drumNotes = Set[36, 37, 38, 39, 44, 45, 46, 47];
         if ((chan == 9) && drumNotes.includes(note)) {
             case
             { note == 36 } {
@@ -259,11 +269,11 @@
                 Synth(\snare, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 40 } {
+            { note == 38 } {
                 Synth(\lofikick, [\freq, 55, \vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 41 } {
+            { note == 39 } {
                 Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
@@ -275,11 +285,11 @@
                 Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 48 } {
+            { note == 46 } {
                 Synth(\snap, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 49 } {
+            { note == 47 } {
                 Synth(\perc, [
                     \freq, 72.midicps,
                     \vel, normVel, \outBus, ~drumBus,

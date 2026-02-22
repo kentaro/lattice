@@ -1,6 +1,6 @@
 # lattice
 
-Launchkey Mini MK4 25 用 SuperCollider シンセ。4プリセット切替、エフェクトチェーン、サスティンペダル対応。
+Launchkey Mini MK4 25 用 SuperCollider シンセ。8プリセット切替、エフェクトチェーン、サスティンペダル対応。
 
 ## 動作環境
 
@@ -41,30 +41,28 @@ systemctl --user restart lattice
 - **Mod ストリップ (CC1)** → ビブラート深度
 - **ピッチベンド** → ±2半音
 
-## パッドレイアウト（4×4, ch10）
+## パッドレイアウト（2行×8列, ch10）
 
-左2列がドラム、右2列がプリセット切替。
+左4列がドラム、右4列がプリセット切替。
 
 ```
-         左(ドラム)           右(プリセット)
-Row 4:  [48 Snap] [49 Perc]  [50 Pad]     [51 Lead]
-Row 3:  [44 HH]  [45 OH]    [46 Strings] [47 Guitar]
-Row 2:  [40 Lofi] [41 Rim]   [42 Wurli]   [43 Organ]
-Row 1:  [36 Kick] [37 Snare] [38 Grand]   [39 Rhodes]
+         左4列(ドラム)                     右4列(プリセット)
+Top:   [44 HH]  [45 OH]  [46 Snap] [47 Perc]  [48 Pad]  [49 Lead] [50 Str] [51 Guitar]
+Bot:   [36 Kick][37 Snare][38 Lofi] [39 Rim]   [40 Grand][41 Rhodes][42 Wurli][43 Organ]
 ```
 
 ### プリセット（右8パッド）
 
 | Note | プリセット | 特徴 |
 |------|-----------|------|
-| 38   | **Grand Piano** (デフォルト) | FM 3オペレータ、ベロシティで明るさ変化 |
-| 39   | **Rhodes** | FM電子ピアノ、テープ風の揺らぎ |
+| 40   | **Grand Piano** (デフォルト) | FM 3オペレータ、ベロシティで明るさ変化 |
+| 41   | **Rhodes** | FM電子ピアノ、テープ風の揺らぎ |
 | 42   | **Wurlitzer** | グリッティなFM、内蔵トレモロ |
 | 43   | **Organ** | 加算合成5倍音、キークリック |
-| 46   | **Strings** | デチューンSaw×4、スローアタック、アンサンブル |
-| 47   | **Guitar** | Karplus-Strong、ベロシティで明るさ変化 |
-| 50   | **Analog Pad** | 4オシレータ+サブ、スローフィルタースイープ |
-| 51   | **Lead** | Saw+Pulse、ポルタメント |
+| 48   | **Analog Pad** | 4オシレータ+サブ、スローフィルタースイープ |
+| 49   | **Lead** | Saw+Pulse、ポルタメント |
+| 50   | **Strings** | デチューンSaw×4、スローアタック、アンサンブル |
+| 51   | **Guitar** | Karplus-Strong、ベロシティで明るさ変化 |
 
 切替時に現在の全ボイスをリリースしてから切り替わる。
 
@@ -76,8 +74,8 @@ Row 1:  [36 Kick] [37 Snare] [38 Grand]   [39 Rhodes]
 |------|------|------|------|
 | 36   | Kick | 44   | HiHat (closed) |
 | 37   | Snare | 45   | HiHat (open) |
-| 40   | LofiKick (55Hz) | 48   | Snap |
-| 41   | Rimshot | 49   | Metallic Perc |
+| 38   | LofiKick (55Hz) | 46   | Snap |
+| 39   | Rimshot | 47   | Metallic Perc |
 
 ## ノブ — 2ページ（上下ボタンで切替）
 
@@ -128,7 +126,7 @@ lattice/
 ├── sc/
 │   ├── main.scd       # エントリーポイント
 │   ├── boot.scd       # Server起動 + バス/グループ + FXインスタンス
-│   ├── synths.scd     # SynthDef群 (Rhodes/Wurli/Pad/Lead/ドラム/Tone/Kalimba)
+│   ├── synths.scd     # SynthDef群 (Grand/Rhodes/Wurli/Organ/Strings/Guitar/Pad/Lead/ドラム/Tone/Kalimba)
 │   ├── effects.scd    # FX SynthDef群 (ReverbFX/DelayFX/MasterFX)
 │   └── midi.scd       # MIDIハンドラー + ボイス管理
 └── bin/
