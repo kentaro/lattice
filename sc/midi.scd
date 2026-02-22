@@ -114,11 +114,11 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOn (Launchkey ch1 → current preset)
-    // ch1(chan==0)のみ — ch10パッドが誤ってキーボードシンセを生成するのを防止
+    // Keyboard NoteOn (Launchkey → current preset)
+    // ch10(chan==9)を除外 — ドラムパッドがキーボードシンセを生成するのを防止
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
-        if ((chan == 0) && (srcID == ~launchkeyUID)) {
+        if ((chan != 9) && (srcID == ~launchkeyUID)) {
             // 同じノートが既に鳴っていたら先にリリース
             if (~activeVoices[note].notNil) {
                 ~activeVoices[note].set(\gate, 0);
@@ -134,10 +134,10 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOff (Launchkey ch1)
+    // Keyboard NoteOff (Launchkey, ch10除外)
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
-        if ((chan == 0) && (srcID == ~launchkeyUID)) {
+        if ((chan != 9) && (srcID == ~launchkeyUID)) {
             ~heldNotes.remove(note);
             ~releaseVoice.(note);
         };
