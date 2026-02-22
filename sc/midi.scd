@@ -32,6 +32,13 @@
     ~pitchBend     = 0.0;              // -1.0 ~ +1.0 (±2 semitones)
     ~modValue      = 0.0;              // 0.0 ~ 1.0
 
+    // ─── デデュプ用タイムスタンプ ────────────────────────────────────
+    // MIDIIn.connectAll + aconnect で二重接続→各イベントが2回発火する。
+    // 10ms以内の同一note同一typeイベントは無視。
+    ~lastNoteOnTime  = Dictionary.new;
+    ~lastNoteOffTime = Dictionary.new;
+    ~dedupWindow     = 0.01;  // 10ms
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Launchkey UID detection (Launchkey ソースUID検出)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -120,32 +127,42 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
-            // 安全弁: ボイス数が暴走したら全解放
-            if (~activeVoices.size > 24) {
-                "WARNING: voice count exceeded 24, releasing all".postln;
-                ~releaseAllVoices.();
+            var now = SystemClock.seconds;
+            var last = ~lastNoteOnTime[note] ? 0;
+            if ((now - last) > ~dedupWindow) {
+                ~lastNoteOnTime[note] = now;
+                // 安全弁: ボイス数が暴走したら全解放
+                if (~activeVoices.size > 24) {
+                    "WARNING: voice count exceeded 24, releasing all".postln;
+                    ~releaseAllVoices.();
+                };
+                // 同じノートが既に鳴っていたら先にリリース
+                if (~activeVoices[note].notNil) {
+                    ~activeVoices[note].set(\gate, 0);
+                    ~activeVoices.removeAt(note);
+                };
+                if (~sustainedNotes[note].notNil) {
+                    ~sustainedNotes[note].set(\gate, 0);
+                    ~sustainedNotes.removeAt(note);
+                };
+                ~heldNotes.add(note);
+                ~spawnVoice.(note, vel, chan);
             };
-            // 同じノートが既に鳴っていたら先にリリース
-            if (~activeVoices[note].notNil) {
-                ~activeVoices[note].set(\gate, 0);
-                ~activeVoices.removeAt(note);
-            };
-            if (~sustainedNotes[note].notNil) {
-                ~sustainedNotes[note].set(\gate, 0);
-                ~sustainedNotes.removeAt(note);
-            };
-            ~heldNotes.add(note);
-            ~spawnVoice.(note, vel, chan);
         };
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOff (Launchkey, ch10除外)
+    // Keyboard NoteOff (Launchkey, ch10除外) — デデュプ付き
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
-            ~heldNotes.remove(note);
-            ~releaseVoice.(note);
+            var now = SystemClock.seconds;
+            var last = ~lastNoteOffTime[note] ? 0;
+            if ((now - last) > ~dedupWindow) {
+                ~lastNoteOffTime[note] = now;
+                ~heldNotes.remove(note);
+                ~releaseVoice.(note);
+            };
         };
     });
 
@@ -256,10 +273,14 @@
     // 左4列 = ドラム: Bottom 36-39, Top 44-47
     // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
     // ═══════════════════════════════════════════════════════════════════════════
+    ~lastDrumTime = Dictionary.new;
     MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
         var normVel = vel / 127.0;
         var drumNotes = Set[36, 37, 38, 39, 44, 45, 46, 47];
-        if ((chan == 9) && drumNotes.includes(note)) {
+        var now = SystemClock.seconds;
+        var last = ~lastDrumTime[note] ? 0;
+        if ((chan == 9) && drumNotes.includes(note) && ((now - last) > ~dedupWindow)) {
+            ~lastDrumTime[note] = now;
             case
             { note == 36 } {
                 Synth(\kick, [\vel, normVel, \outBus, ~drumBus,
