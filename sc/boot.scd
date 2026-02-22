@@ -30,9 +30,10 @@
         "Groups created.".postln;
 
         // ─── MIDI初期化 ──────────────────────────────────────────────────
+        // MIDIClient.initでポート作成のみ。ALSA接続はbin/latticeのaconnectループに任せる。
+        // MIDIIn.connectAllは使わない（aconnectと二重接続になり全ノートが2回発火する）
         MIDIClient.init;
-        MIDIIn.connectAll;
-        "MIDI connectAll done.".postln;
+        "MIDI init done (connections via aconnect).".postln;
 
         // ─── SynthDef ロード ─────────────────────────────────────────────
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");

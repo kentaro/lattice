@@ -22,7 +22,7 @@ fi
 # MIDI自動接続デーモン (USBデバイスの抜き差しに対応)
 # 5秒ごとに全ハードウェアMIDIソースをSuperColliderに接続 (冪等)
 midi_connect_loop() {
-    sleep 12  # SC起動を待つ
+    sleep 8  # SC起動を待つ
     echo "[lattice] MIDI auto-connect started"
     while pgrep -x sclang >/dev/null 2>&1; do
         # SCのクライアント番号を検出
