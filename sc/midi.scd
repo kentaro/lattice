@@ -268,6 +268,8 @@
         // 左4列: Bot 36-39, Top 40-43
         var drumNotes = Set[36, 37, 38, 39, 40, 41, 42, 43];
         if ((chan == 9) && (srcID == ~launchkeyUID) && drumNotes.includes(note)) {
+            // Bot:  [36 Kick] [37 Snare] [38 HH closed] [39 HH open]
+            // Top:  [40 Lofi] [41 Rim]   [42 Snap]      [43 Perc]
             case
             { note == 36 } {
                 Synth(\kick, [\vel, normVel, \outBus, ~drumBus,
@@ -278,19 +280,19 @@
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
             { note == 38 } {
-                Synth(\lofikick, [\freq, 55, \vel, normVel, \outBus, ~drumBus,
-                    \reverbBus, ~reverbSend], ~drumGroup)
-            }
-            { note == 39 } {
-                Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
-                    \reverbBus, ~reverbSend], ~drumGroup)
-            }
-            { note == 40 } {
                 Synth(\hihat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 41 } {
+            { note == 39 } {
                 Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 40 } {
+                Synth(\lofikick, [\freq, 55, \vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 41 } {
+                Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
             { note == 42 } {
