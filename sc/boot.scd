@@ -30,17 +30,11 @@
         "Groups created.".postln;
 
         // ─── MIDI初期化 ──────────────────────────────────────────────────
-        // SC自身の出力ポートは接続しない（フィードバックループ防止）
+        // connectAll で全ソース接続。二重接続の原因だったaconnectループは廃止済み。
+        // SC出力もソースとして接続されるが、MIDIOut未使用なのでデータは流れない。
         MIDIClient.init;
-        MIDIClient.sources.do { |src, i|
-            if (src.device != "SuperCollider") {
-                MIDIIn.connect(i, src);
-                ("MIDI connected: " ++ src.device ++ " / " ++ src.name).postln;
-            } {
-                ("MIDI skipped (self): " ++ src.name).postln;
-            };
-        };
-        "MIDI init done.".postln;
+        MIDIIn.connectAll;
+        "MIDI connectAll done.".postln;
 
         // ─── SynthDef ロード ─────────────────────────────────────────────
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
