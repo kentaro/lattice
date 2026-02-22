@@ -30,10 +30,17 @@
         "Groups created.".postln;
 
         // ─── MIDI初期化 ──────────────────────────────────────────────────
-        // MIDIClient.initでポート作成のみ。ALSA接続はbin/latticeのaconnectループに任せる。
-        // MIDIIn.connectAllは使わない（aconnectと二重接続になり全ノートが2回発火する）
+        // SC自身の出力ポートは接続しない（フィードバックループ防止）
         MIDIClient.init;
-        "MIDI init done (connections via aconnect).".postln;
+        MIDIClient.sources.do { |src, i|
+            if (src.device != "SuperCollider") {
+                MIDIIn.connect(i, src);
+                ("MIDI connected: " ++ src.device ++ " / " ++ src.name).postln;
+            } {
+                ("MIDI skipped (self): " ++ src.name).postln;
+            };
+        };
+        "MIDI init done.".postln;
 
         // ─── SynthDef ロード ─────────────────────────────────────────────
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
