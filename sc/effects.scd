@@ -28,26 +28,21 @@ SynthDef(\delayFX, { |inBus, outBus, delayTime=0.375, feedback=0.4|
     Out.ar(outBus, sig);
 }).add;
 
-// ─── \masterFX: Chorus → Tape Saturation → Limiter → Out ───────────────
+// ─── \masterFX: Tape Saturation → Limiter → Out ────────────────────────
+// Pi4向けに軽量化: Chorus削除、softclipでCPU節約
 SynthDef(\masterFX, { |kbBus, drumBus, toneBus, fxBus,
-                       chorusRate=0.3, tapeDrive=0.3, masterVol=1.0|
+                       tapeDrive=0.3, masterVol=1.0|
     var kb   = In.ar(kbBus, 2);
     var drum = In.ar(drumBus, 2);
     var tone = In.ar(toneBus, 2);
     var fx   = In.ar(fxBus, 2);
     var sig  = kb + drum + tone + fx;
 
-    // Chorus (DelayC LFO)
-    var lfo = SinOsc.kr(chorusRate, [0, pi/2]);
-    var chorusL = DelayC.ar(sig[0], 0.02, lfo[0].range(0.005, 0.015));
-    var chorusR = DelayC.ar(sig[1], 0.02, lfo[1].range(0.005, 0.015));
-    var chorus = [sig[0] + (chorusL * 0.3), sig[1] + (chorusR * 0.3)];
-
-    // Tape Saturation
-    var tape = (chorus * (1 + tapeDrive)).tanh;
+    // Tape Saturation (softclip — tanh より軽い)
+    sig = (sig * (1 + tapeDrive)).softclip;
 
     // Limiter
-    sig = Limiter.ar(tape * masterVol, 0.95);
+    sig = Limiter.ar(sig * masterVol, 0.95);
     Out.ar(0, sig);
 }).add;
 

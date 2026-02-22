@@ -336,9 +336,9 @@
                     ~sustainedNotes.do { |s| s.set(\delaySend, norm) };
                 }
                 { num == 27 } {
-                    // Chorus amount → masterFX
-                    ~params[\chorus] = norm;
-                    ~masterFXSynth.set(\chorusRate, norm.linexp(0, 1, 0.1, 3.0));
+                    // Tape Drive → masterFX
+                    ~fxParams[\tapeDrive] = norm;
+                    ~masterFXSynth.set(\tapeDrive, norm);
                 }
                 { num == 28 } {
                     // Master volume → masterFX
@@ -369,14 +369,12 @@
                     ~delayFXSynth.set(\feedback, ~fxParams[\delayFB]);
                 }
                 { num == 25 } {
-                    // Chorus Rate
-                    ~fxParams[\chorusRate] = norm.linexp(0, 1, 0.1, 5.0);
-                    ~masterFXSynth.set(\chorusRate, ~fxParams[\chorusRate]);
-                }
-                { num == 26 } {
                     // Tape Drive
                     ~fxParams[\tapeDrive] = norm.linlin(0, 1, 0.0, 1.0);
                     ~masterFXSynth.set(\tapeDrive, ~fxParams[\tapeDrive]);
+                }
+                { num == 26 } {
+                    // (reserved)
                 }
                 { num == 27 } {
                     // LFO Rate (stored for synth use)

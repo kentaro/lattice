@@ -55,7 +55,7 @@
 
         ~masterFXSynth = Synth(\masterFX, [
             \kbBus, ~kbBus, \drumBus, ~drumBus, \toneBus, ~toneBus, \fxBus, ~fxBus,
-            \chorusRate, ~fxParams[\chorusRate], \tapeDrive, ~fxParams[\tapeDrive]
+            \tapeDrive, ~fxParams[\tapeDrive]
         ], ~masterGroup);
         "Effects chain started.".postln;
 
