@@ -1,26 +1,43 @@
-// midi.scd — 汎用MIDI受信 + Launchkey ノブマッピング
+// midi.scd — MIDI受信 + Launchkey MK4 ノブ/パッド/鍵盤マッピング
+// gate-based voice management / sustain pedal / preset switching
 (
-    // ─── グローバルパラメーター (ノブで更新) ───────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // グローバルパラメーター (Global parameters — updated by knobs)
+    // ═══════════════════════════════════════════════════════════════════════════
     ~params = (
-        cutoff:    8000,
-        resonance: 0.3,
-        attack:    0.01,
-        release:   1.0,
-        reverb:    0.3,
-        detune:    0.0,
-        lfoRate:   1.0,
-        lfoDepth:  0.0
+        cutoff:     8000,
+        resonance:  0.3,
+        attack:     0.01,
+        release:    0.5,
+        reverbSend: 0.3,
+        delaySend:  0.0,
+        chorus:     0.3,
+        volume:     1.0,
+        lfoRate:    1.0,
+        lfoDepth:   0.0
     );
 
-    // 現在演奏中の \piano シンス (ピッチベンド・CC1で操作)
-    ~activePianos = Dictionary.new;
-    ~pitchBend = 0.0;  // -1.0 〜 +1.0 (±2半音)
-    ~modValue  = 0.0;  // 0.0 〜 1.0
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Voice tracking (ボイス管理)
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~activeVoices   = Dictionary.new;   // note -> Synth (keyboard voices)
+    ~heldNotes      = Set.new;          // 物理的に押されている鍵盤
+    ~sustainedNotes = Dictionary.new;   // note -> Synth (ペダルで延長中)
+    ~sustainOn      = false;            // sustain pedal state
 
-    // ─── CC値 → 実パラメーター変換 ────────────────────────────────────────
-    ~ccToParam = { |ccVal|  ccVal / 127.0 };
+    ~activeTones    = Dictionary.new;   // note -> Synth (external MIDI \tone)
 
-    // ─── Launchkey のソースUID検出 ──────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Preset / mode state (プリセット/モード状態)
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~currentPreset = \rhodes;           // default keyboard preset
+    ~knobMode      = \sound;            // \sound or \fx
+    ~pitchBend     = 0.0;              // -1.0 ~ +1.0 (±2 semitones)
+    ~modValue      = 0.0;              // 0.0 ~ 1.0
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Launchkey UID detection (Launchkey ソースUID検出)
+    // ═══════════════════════════════════════════════════════════════════════════
     ~launchkeyUID = nil;
     MIDIClient.sources.do { |src|
         if (src.device.containsi("Launchkey") && src.name.containsi("MIDI In")) {
@@ -29,148 +46,407 @@
         };
     };
 
-    // ─── Launchkey ch1 NoteOn → \piano ──────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Helper: ~spawnVoice — キーボードボイス生成
+    // Creates a synth for the current preset with all params
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~spawnVoice = { |note, vel, chan|
+        var freq = note.midicps * (1 + (~pitchBend * 2/12));
+        var amp  = vel / 127.0 * 0.4;
+        var pan  = ((note - 60) / 36.0).clip(-1, 1);
+        var args = [
+            \freq,       freq,
+            \gate,       1,
+            \vel,        vel / 127.0,
+            \amp,        amp,
+            \attack,     ~params[\attack],
+            \release,    ~params[\release],
+            \cutoff,     ~params[\cutoff],
+            \resonance,  ~params[\resonance],
+            \reverbSend, ~params[\reverbSend],
+            \delaySend,  ~params[\delaySend],
+            \pan,        pan,
+            \vibRate,    ~params[\lfoRate],
+            \vibDepth,   ~modValue * ~params[\lfoDepth],
+            \outBus,     ~kbBus,
+            \reverbBus,  ~reverbSend,
+            \delayBus,   ~delaySend
+        ];
+        var synth;
+
+        // Preset-specific extra args
+        switch(~currentPreset,
+            \wurlitzer, { args = args ++ [\tremRate, ~params[\lfoRate], \tremDepth, ~params[\lfoDepth]] },
+            \analogPad, { args = args ++ [\subLevel, 0.4] },
+            \lead,      { args = args ++ [\portTime, 0.05, \pulseWidth, 0.5] }
+        );
+
+        synth = Synth(~currentPreset, args, ~kbGroup);
+        ~activeVoices[note] = synth;
+        synth;
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Helper: ~releaseVoice — ボイス解放 (sustain pedal aware)
+    // NEVER uses .free — always .set(\gate, 0) for proper ADSR release
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~releaseVoice = { |note|
+        var synth = ~activeVoices[note];
+        if (synth.notNil) {
+            if (~sustainOn) {
+                // Pedal is held: move to sustainedNotes (keep sounding)
+                ~sustainedNotes[note] = synth;
+                ~activeVoices.removeAt(note);
+            } {
+                // No pedal: release immediately via gate
+                synth.set(\gate, 0);
+                ~activeVoices.removeAt(note);
+            };
+        };
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Helper: ~releaseAllVoices — 全ボイス解放 (preset switch時など)
+    // ═══════════════════════════════════════════════════════════════════════════
+    ~releaseAllVoices = {
+        ~activeVoices.do { |synth| synth.set(\gate, 0) };
+        ~activeVoices = Dictionary.new;
+        ~sustainedNotes.do { |synth| synth.set(\gate, 0) };
+        ~sustainedNotes = Dictionary.new;
+        ~heldNotes = Set.new;
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Keyboard NoteOn (Launchkey → current preset)
+    // srcIDのみでフィルタ (ch制限なし — Launchkeyはch1固定)
+    // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
-        var freq, amp, synth;
         if (srcID == ~launchkeyUID) {
-            freq = note.midicps * (1 + (~pitchBend * 2/12));
-            amp  = vel / 127.0 * 0.4;
-            synth = Synth(\piano, [
-                \freq,      freq,
-                \amp,       amp,
-                \detune,    ~params[\detune],
-                \attack,    ~params[\attack],
-                \release,   ~params[\release],
-                \cutoff,    ~params[\cutoff],
-                \resonance, ~params[\resonance],
-                \reverb,    ~params[\reverb],
-                \pan,       ((note - 60) / 36.0).clip(-1, 1)
-            ]);
-            ~activePianos[note] = synth;
+            // 同じノートが既に鳴っていたら先にリリース
+            if (~activeVoices[note].notNil) {
+                ~activeVoices[note].set(\gate, 0);
+                ~activeVoices.removeAt(note);
+            };
+            if (~sustainedNotes[note].notNil) {
+                ~sustainedNotes[note].set(\gate, 0);
+                ~sustainedNotes.removeAt(note);
+            };
+            ~heldNotes.add(note);
+            ~spawnVoice.(note, vel, chan);
         };
     });
 
-    // ─── Launchkey ch1 NoteOff → \piano 解放 ────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Keyboard NoteOff (Launchkey)
+    // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
         if (srcID == ~launchkeyUID) {
-            ~activePianos[note].free;
-            ~activePianos.removeAt(note);
+            ~heldNotes.remove(note);
+            ~releaseVoice.(note);
         };
     });
 
-    // ─── ch10 NoteOn → ドラム/パーカッション ──────────────────────────────
-    MIDIdef.noteOn(\padOn, { |vel, note, chan|
-        var amp = vel / 127.0 * 0.5;
-        if (chan == 9) {  // ch10 = index 9
-            ("PAD: note=" ++ note ++ " vel=" ++ vel ++ " amp=" ++ amp).postln;
-            case
-            { note == 36 } { Synth(\kick,    [\amp, amp]) }
-            { note == 37 } { Synth(\snare,   [\amp, amp]) }
-            { note == 38 } { Synth(\hihat,   [\amp, amp]) }
-            { note == 39 } { Synth(\openhat, [\amp, amp]) }
-            { note == 40 } { Synth(\lofikick, [\freq, 55, \amp, amp]) }
-            { note == 41 } { Synth(\lofikick, [\freq, 45, \amp, amp]) }
-            { note == 42 } { Synth(\lofikick, [\freq, 65, \amp, amp]) }
-            { note == 43 } { Synth(\clap,    [\amp, amp]) }
-            { (note >= 44) && (note <= 47) } {
-                Synth(\perc, [\freq, (note - 44 * 5 + 48).midicps, \amp, amp])
-            }
-            { (note >= 48) && (note <= 51) } {
-                Synth(\fx, [
-                    \freq,    note.midicps,
-                    \amp,     amp,
-                    \attack,  ~params[\attack],
-                    \release, ~params[\release]
-                ])
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Sustain Pedal (CC64 from Launchkey)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.cc(\sustainPedal, { |val, num, chan, srcID|
+        if ((num == 64) && (srcID == ~launchkeyUID)) {
+            if (val >= 64) {
+                // Pedal down
+                ~sustainOn = true;
+            } {
+                // Pedal up: release all sustained notes
+                ~sustainOn = false;
+                ~sustainedNotes.do { |synth|
+                    synth.set(\gate, 0);
+                };
+                ~sustainedNotes = Dictionary.new;
             };
         };
     });
 
-    // ─── ch16 NoteOn → \kalimba (代替音色チャンネル) ────────────────────────
-    MIDIdef.noteOn(\altOn, { |vel, note, chan, srcID|
-        if (chan == 15) {
-            Synth(\kalimba, [
-                \freq,    note.midicps,
-                \amp,     vel / 127.0 * 0.5,
-                \release, ~params[\release],
-                \reverb,  ~params[\reverb],
-                \pan,     ((note - 60) / 36.0).clip(-1, 1)
-            ]);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Aftertouch (channel pressure → cutoff modulation)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.touch(\aftertouch, { |val, chan, srcID|
+        if (srcID == ~launchkeyUID) {
+            var cutoffOffset = val / 127.0 * 4000;
+            var newCutoff = (~params[\cutoff] + cutoffOffset).clip(80, 18000);
+            ~activeVoices.do { |synth|
+                synth.set(\cutoff, newCutoff);
+            };
+            ~sustainedNotes.do { |synth|
+                synth.set(\cutoff, newCutoff);
+            };
         };
     });
 
-    // ─── 汎用 NoteOn → \tone (その他全チャンネル) ─────────────────────────
-    MIDIdef.noteOn(\genericOn, { |vel, note, chan, srcID|
-        if ((chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
-            Synth(\tone, [
-                \freq,    note.midicps,
-                \amp,     vel / 127.0 * 0.5,
-                \attack,  ~params[\attack],
-                \release, ~params[\release],
-                \cutoff,  ~params[\cutoff],
-                \reverb,  ~params[\reverb],
-                \pan,     ((note - 60) / 36.0).clip(-1, 1)
-            ]);
-        };
-    });
-
-    // ─── ch1 CC1 (Mod タッチストリップ) → detune/vibrato ─────────────────
-    MIDIdef.cc(\modStrip, { |val, num, chan|
-        if ((chan == 0) && (num == 1)) {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Mod Strip (CC1 → vibrato depth)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.cc(\modStrip, { |val, num, chan, srcID|
+        if ((num == 1) && (srcID == ~launchkeyUID)) {
             ~modValue = val / 127.0;
-            ~activePianos.do { |synth|
-                synth.set(\detune, ~modValue * 20);
+            ~activeVoices.do { |synth|
+                synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
+            };
+            ~sustainedNotes.do { |synth|
+                synth.set(\vibDepth, ~modValue * ~params[\lfoDepth].max(0.5));
             };
         };
     });
 
-    // ─── ch1 PitchBend → 音程変化 (±2半音) ──────────────────────────────
-    MIDIdef.bend(\pitchBend, { |val, chan|
-        if (chan == 0) {
-            // val: 0-16383, center=8192
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Pitch Bend (±2 semitones)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.bend(\pitchBend, { |val, chan, srcID|
+        if (srcID == ~launchkeyUID) {
             ~pitchBend = (val - 8192) / 8192.0;
-            ~activePianos.keysValuesDo { |note, synth|
+            ~activeVoices.keysValuesDo { |note, synth|
+                var newFreq = note.midicps * (1 + (~pitchBend * 2/12));
+                synth.set(\freq, newFreq);
+            };
+            ~sustainedNotes.keysValuesDo { |note, synth|
                 var newFreq = note.midicps * (1 + (~pitchBend * 2/12));
                 synth.set(\freq, newFreq);
             };
         };
     });
 
-    // ─── CC21-28 → グローバルパラメーター ──────────────────────────────────
-    // Launchkey MK4: ノブのチャンネルはデバイス設定により変動するため
-    // CC番号のみでマッチ (全チャンネル受付)
-    MIDIdef.cc(\knobs, { |val, num, chan|
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Preset Selection (ch10, pads 48-51)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
+        if ((chan == 9) && (srcID == ~launchkeyUID)) {
+            var presets = Dictionary[
+                48 -> \rhodes,
+                49 -> \wurlitzer,
+                50 -> \analogPad,
+                51 -> \lead
+            ];
+            var newPreset = presets[note];
+            if (newPreset.notNil && (newPreset != ~currentPreset)) {
+                ~releaseAllVoices.();
+                ~currentPreset = newPreset;
+                ("Preset: " ++ newPreset).postln;
+            };
+        };
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Drum Pads (ch10, notes 36-47)
+    // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
+        var normVel = vel / 127.0;
+        if ((chan == 9) && (note >= 36) && (note <= 47)) {
+            case
+            { note == 36 } {
+                Synth(\kick, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 37 } {
+                Synth(\snare, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 38 } {
+                Synth(\hihat, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 39 } {
+                Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 40 } {
+                Synth(\lofikick, [\freq, 55, \vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 41 } {
+                Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 42 } {
+                Synth(\lofikick, [\freq, 65, \vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 43 } {
+                Synth(\snap, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { (note >= 44) && (note <= 47) } {
+                Synth(\perc, [
+                    \freq, (note - 44 * 5 + 48).midicps,
+                    \vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend
+                ], ~drumGroup)
+            };
+        };
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Knob Mode Toggle (CC29 — toggle between \sound and \fx)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.cc(\knobModeToggle, { |val, num, chan, srcID|
+        if ((num == 29) && (srcID == ~launchkeyUID)) {
+            if (val >= 64) {
+                ~knobMode = if (~knobMode == \sound) { \fx } { \sound };
+                ("Knob mode: " ++ ~knobMode).postln;
+            };
+        };
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Knobs CC21-28 — Mode A (\sound) / Mode B (\fx)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.cc(\knobs, { |val, num, chan, srcID|
         var norm = val / 127.0;
-        case
-        { num == 21 } {
-            ~params[\cutoff] = (norm * 18000).clip(80, 18000);
-            ~activePianos.do { |s| s.set(\cutoff, ~params[\cutoff]) };
-        }
-        { num == 22 } {
-            ~params[\resonance] = norm.clip(0.01, 0.99);
-            ~activePianos.do { |s| s.set(\resonance, ~params[\resonance]) };
-        }
-        { num == 23 } {
-            ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
-        }
-        { num == 24 } {
-            ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
-        }
-        { num == 25 } {
-            ~params[\reverb] = norm;
-            ~activePianos.do { |s| s.set(\reverb, norm) };
-        }
-        { num == 26 } {
-            ~params[\detune] = norm * 30;
-            ~activePianos.do { |s| s.set(\detune, ~params[\detune]) };
-        }
-        { num == 27 } {
-            ~params[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
-        }
-        { num == 28 } {
-            // ノブ8 → マスターボリューム
-            var db = norm.linlin(0, 1, -40, 6);
-            Server.default.volume.volume = db;
+
+        if ((num >= 21) && (num <= 28) && (srcID == ~launchkeyUID)) {
+            if (~knobMode == \sound) {
+                // ─── Mode A: Sound parameters ──────────────────────────────
+                case
+                { num == 21 } {
+                    // Cutoff (80-18000, exponential)
+                    ~params[\cutoff] = norm.linexp(0, 1, 80, 18000);
+                    ~activeVoices.do { |s| s.set(\cutoff, ~params[\cutoff]) };
+                    ~sustainedNotes.do { |s| s.set(\cutoff, ~params[\cutoff]) };
+                }
+                { num == 22 } {
+                    // Resonance (0.01-0.99, linear)
+                    ~params[\resonance] = norm.linlin(0, 1, 0.01, 0.99);
+                    ~activeVoices.do { |s| s.set(\resonance, ~params[\resonance]) };
+                    ~sustainedNotes.do { |s| s.set(\resonance, ~params[\resonance]) };
+                }
+                { num == 23 } {
+                    // Attack (0.001-2.0, exponential)
+                    ~params[\attack] = norm.linexp(0, 1, 0.001, 2.0);
+                }
+                { num == 24 } {
+                    // Release (0.05-5.0, exponential)
+                    ~params[\release] = norm.linexp(0, 1, 0.05, 5.0);
+                }
+                { num == 25 } {
+                    // Reverb Send (0-1, linear)
+                    ~params[\reverbSend] = norm;
+                    ~activeVoices.do { |s| s.set(\reverbSend, norm) };
+                    ~sustainedNotes.do { |s| s.set(\reverbSend, norm) };
+                }
+                { num == 26 } {
+                    // Delay Send (0-1, linear)
+                    ~params[\delaySend] = norm;
+                    ~activeVoices.do { |s| s.set(\delaySend, norm) };
+                    ~sustainedNotes.do { |s| s.set(\delaySend, norm) };
+                }
+                { num == 27 } {
+                    // Chorus amount → masterFX
+                    ~params[\chorus] = norm;
+                    ~masterFXSynth.set(\chorusRate, norm.linexp(0, 1, 0.1, 3.0));
+                }
+                { num == 28 } {
+                    // Master volume → masterFX
+                    ~params[\volume] = norm;
+                    ~masterFXSynth.set(\masterVol, norm);
+                };
+            } {
+                // ─── Mode B: FX parameters ─────────────────────────────────
+                case
+                { num == 21 } {
+                    // Reverb Size
+                    ~fxParams[\reverbSize] = norm.linlin(0, 1, 0.1, 1.0);
+                    ~reverbFXSynth.set(\size, ~fxParams[\reverbSize]);
+                }
+                { num == 22 } {
+                    // Reverb Damp
+                    ~fxParams[\reverbDamp] = norm;
+                    ~reverbFXSynth.set(\damp, ~fxParams[\reverbDamp]);
+                }
+                { num == 23 } {
+                    // Delay Time
+                    ~fxParams[\delayTime] = norm.linexp(0, 1, 0.05, 1.0);
+                    ~delayFXSynth.set(\delayTime, ~fxParams[\delayTime]);
+                }
+                { num == 24 } {
+                    // Delay Feedback
+                    ~fxParams[\delayFB] = norm.linlin(0, 1, 0.0, 0.9);
+                    ~delayFXSynth.set(\feedback, ~fxParams[\delayFB]);
+                }
+                { num == 25 } {
+                    // Chorus Rate
+                    ~fxParams[\chorusRate] = norm.linexp(0, 1, 0.1, 5.0);
+                    ~masterFXSynth.set(\chorusRate, ~fxParams[\chorusRate]);
+                }
+                { num == 26 } {
+                    // Tape Drive
+                    ~fxParams[\tapeDrive] = norm.linlin(0, 1, 0.0, 1.0);
+                    ~masterFXSynth.set(\tapeDrive, ~fxParams[\tapeDrive]);
+                }
+                { num == 27 } {
+                    // LFO Rate (stored for synth use)
+                    ~fxParams[\lfoRate] = norm.linexp(0, 1, 0.1, 20.0);
+                    ~params[\lfoRate] = ~fxParams[\lfoRate];
+                    ~activeVoices.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
+                    ~sustainedNotes.do { |s| s.set(\vibRate, ~params[\lfoRate]) };
+                }
+                { num == 28 } {
+                    // LFO Depth (stored for synth use)
+                    ~fxParams[\lfoDepth] = norm;
+                    ~params[\lfoDepth] = norm;
+                    ~activeVoices.do { |s| s.set(\vibDepth, ~modValue * norm) };
+                    ~sustainedNotes.do { |s| s.set(\vibDepth, ~modValue * norm) };
+                };
+            };
+        };
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // External MIDI: \tone (gate-based, all channels except ch1/ch10/ch16)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.noteOn(\toneOn, { |vel, note, chan, srcID|
+        if ((chan != 0) && (chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
+            var synth;
+            // 既に同じノートが鳴っていたらリリース
+            if (~activeTones[note].notNil) {
+                ~activeTones[note].set(\gate, 0);
+                ~activeTones.removeAt(note);
+            };
+            synth = Synth(\tone, [
+                \freq,       note.midicps,
+                \gate,       1,
+                \amp,        vel / 127.0 * 0.5,
+                \attack,     ~params[\attack],
+                \release,    ~params[\release],
+                \cutoff,     ~params[\cutoff],
+                \reverbSend, ~params[\reverbSend],
+                \pan,        ((note - 60) / 36.0).clip(-1, 1),
+                \outBus,     ~toneBus,
+                \reverbBus,  ~reverbSend
+            ], ~toneGroup);
+            ~activeTones[note] = synth;
+        };
+    });
+
+    MIDIdef.noteOff(\toneOff, { |vel, note, chan, srcID|
+        if ((chan != 0) && (chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
+            if (~activeTones[note].notNil) {
+                ~activeTones[note].set(\gate, 0);
+                ~activeTones.removeAt(note);
+            };
+        };
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ch16 NoteOn → \kalimba (percussive, fire-and-forget)
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.noteOn(\kalimbaOn, { |vel, note, chan, srcID|
+        if (chan == 15) {
+            Synth(\kalimba, [
+                \freq,    note.midicps,
+                \amp,     vel / 127.0 * 0.5,
+                \release, ~params[\release],
+                \pan,     ((note - 60) / 36.0).clip(-1, 1),
+                \outBus,  ~toneBus,
+                \reverbBus, ~reverbSend
+            ], ~toneGroup);
         };
     });
 
