@@ -123,6 +123,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
+            ("KB ON: n=" ++ note ++ " v=" ++ vel ++ " voices=" ++ ~activeVoices.size).postln;
             // 安全弁: ボイス数が暴走したら全解放
             if (~activeVoices.size > 24) {
                 "WARNING: voice count exceeded 24, releasing all".postln;
@@ -147,6 +148,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
+            ("KB OFF: n=" ++ note ++ " voices=" ++ ~activeVoices.size).postln;
             ~heldNotes.remove(note);
             ~releaseVoice.(note);
         };
