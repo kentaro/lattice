@@ -230,17 +230,18 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Preset Selection (ch10, right 4 columns: 40-43, 48-51)
-    // 2行×8列レイアウト: Bottom 36-43, Top 44-51
-    // 右4列 = プリセット: Bottom 40-43, Top 48-51
+    // Preset Selection (ch10, right 4 columns: 44-47, 48-51)
+    // 2行×8列: 各列 bottom=N, top=N+4
+    // 右4列 = プリセット: Bottom 44-47, Top 48-51
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
+            // 右4列: Bot 44-47, Top 48-51
             var presets = Dictionary[
-                40 -> \grandPiano,
-                41 -> \rhodes,
-                42 -> \wurlitzer,
-                43 -> \organ,
+                44 -> \grandPiano,
+                45 -> \rhodes,
+                46 -> \wurlitzer,
+                47 -> \organ,
                 48 -> \analogPad,
                 49 -> \lead,
                 50 -> \strings,
@@ -257,14 +258,15 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Drum Pads (ch10, left 4 columns: 36-39, 44-47)
-    // 2行×8列レイアウト: Bottom 36-43, Top 44-51
-    // 左4列 = ドラム: Bottom 36-39, Top 44-47
+    // Drum Pads (ch10, left 4 columns: 36-39, 40-43)
+    // 2行×8列: 各列 bottom=N, top=N+4
+    // 左4列 = ドラム: Bottom 36-39, Top 40-43
     // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
         var normVel = vel / 127.0;
-        var drumNotes = Set[36, 37, 38, 39, 44, 45, 46, 47];
+        // 左4列: Bot 36-39, Top 40-43
+        var drumNotes = Set[36, 37, 38, 39, 40, 41, 42, 43];
         if ((chan == 9) && (srcID == ~launchkeyUID) && drumNotes.includes(note)) {
             case
             { note == 36 } {
@@ -283,19 +285,19 @@
                 Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 44 } {
+            { note == 40 } {
                 Synth(\hihat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 45 } {
+            { note == 41 } {
                 Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 46 } {
+            { note == 42 } {
                 Synth(\snap, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 47 } {
+            { note == 43 } {
                 Synth(\perc, [
                     \freq, 72.midicps,
                     \vel, normVel, \outBus, ~drumBus,
