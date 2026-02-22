@@ -342,16 +342,17 @@ SynthDef(\snap, { |vel=0.8, amp=0.6, outBus=0, reverbBus=0, reverbAmt=0.1, pan=0
 // 外部MIDI用シンセ
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── \tone: ソフトパッド (gate-based ADSR) ────────────────────────────────
+// ─── \tone: ソフトパッド (percussive — 外部デバイス抜き差し安全) ──────────
 // 三角波ベース, 深いLPFでこもった暖かさ
-SynthDef(\tone, { |freq=440, gate=1, amp=0.3, attack=0.08, release=0.8,
+// 外部MIDIは物理切断でNoteOffが来ないため Env.perc を使用
+SynthDef(\tone, { |freq=440, amp=0.3, attack=0.08, release=0.8,
                    cutoff=8000, reverbSend=0.2, pan=0.0,
                    outBus=0, reverbBus=0|
     var env, sig;
 
     env = EnvGen.kr(
-        Env.adsr(attack, 0.3, 0.7, release),
-        gate, doneAction: Done.freeSelf
+        Env.perc(attack, release, 1, -3),
+        doneAction: Done.freeSelf
     );
 
     // 三角波風 (わずかなデチューン)

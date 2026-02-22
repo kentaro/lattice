@@ -25,8 +25,6 @@
     ~sustainedNotes = Dictionary.new;   // note -> Synth (ペダルで延長中)
     ~sustainOn      = false;            // sustain pedal state
 
-    ~activeTones    = Dictionary.new;   // note -> Synth (external MIDI \tone)
-
     // ═══════════════════════════════════════════════════════════════════════════
     // Preset / mode state (プリセット/モード状態)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -399,19 +397,13 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // External MIDI: \tone (gate-based, all channels except ch1/ch10/ch16)
+    // External MIDI: \tone (fire-and-forget, all channels except ch1/ch10/ch16)
+    // 外部デバイスは物理切断でNoteOffが来ないため percussive envelope で安全に
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\toneOn, { |vel, note, chan, srcID|
         if ((chan != 0) && (chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
-            var synth;
-            // 既に同じノートが鳴っていたらリリース
-            if (~activeTones[note].notNil) {
-                ~activeTones[note].set(\gate, 0);
-                ~activeTones.removeAt(note);
-            };
-            synth = Synth(\tone, [
+            Synth(\tone, [
                 \freq,       note.midicps,
-                \gate,       1,
                 \amp,        vel / 127.0 * 0.5,
                 \attack,     ~params[\attack],
                 \release,    ~params[\release],
@@ -421,16 +413,6 @@
                 \outBus,     ~toneBus,
                 \reverbBus,  ~reverbSend
             ], ~toneGroup);
-            ~activeTones[note] = synth;
-        };
-    });
-
-    MIDIdef.noteOff(\toneOff, { |vel, note, chan, srcID|
-        if ((chan != 0) && (chan != 9) && (chan != 15) && (srcID != ~launchkeyUID)) {
-            if (~activeTones[note].notNil) {
-                ~activeTones[note].set(\gate, 0);
-                ~activeTones.removeAt(note);
-            };
         };
     });
 
