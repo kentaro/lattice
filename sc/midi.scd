@@ -236,7 +236,6 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
-            ("PAD: note=" ++ note ++ " chan=" ++ chan).postln;
             var presets = Dictionary[
                 40 -> \grandPiano,
                 41 -> \rhodes,
@@ -248,6 +247,7 @@
                 51 -> \guitar
             ];
             var newPreset = presets[note];
+            ("PAD: note=" ++ note ++ " preset=" ++ newPreset).postln;
             if (newPreset.notNil && (newPreset != ~currentPreset)) {
                 ~releaseAllVoices.();
                 ~currentPreset = newPreset;
