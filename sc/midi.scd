@@ -441,5 +441,12 @@
         };
     });
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Debug: 全NoteOnをログ（原因調査用、安定したら削除）
+    // ═══════════════════════════════════════════════════════════════════════════
+    MIDIdef.noteOn(\debugNoteOn, { |vel, note, chan, srcID|
+        ("DEBUG noteOn: note=" ++ note ++ " vel=" ++ vel ++ " chan=" ++ chan ++ " srcID=" ++ srcID ++ " launchkeyUID=" ++ ~launchkeyUID).postln;
+    });
+
     "midi.scd loaded. Listening on all MIDI channels.".postln;
 )
