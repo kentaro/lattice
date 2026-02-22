@@ -23,7 +23,7 @@
     // ─── Launchkey のソースUID検出 ──────────────────────────────────────────
     ~launchkeyUID = nil;
     MIDIClient.sources.do { |src|
-        if (src.device.containsi("Launchkey")) {
+        if (src.device.containsi("Launchkey") && src.name.containsi("MIDI In")) {
             ~launchkeyUID = src.uid;
             ("Launchkey detected: uid=" ++ src.uid).postln;
         };
@@ -32,7 +32,7 @@
     // ─── Launchkey ch1 NoteOn → \piano ──────────────────────────────────────
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
         var freq, amp, synth;
-        if ((chan == 0) && (srcID == ~launchkeyUID)) {
+        if (srcID == ~launchkeyUID) {
             freq = note.midicps * (1 + (~pitchBend * 2/12));
             amp  = vel / 127.0 * 0.7;
             synth = Synth(\piano, [
@@ -52,7 +52,7 @@
 
     // ─── Launchkey ch1 NoteOff → \piano 解放 ────────────────────────────────
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
-        if ((chan == 0) && (srcID == ~launchkeyUID)) {
+        if (srcID == ~launchkeyUID) {
             ~activePianos[note].free;
             ~activePianos.removeAt(note);
         };

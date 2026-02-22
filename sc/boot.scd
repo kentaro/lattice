@@ -1,6 +1,5 @@
 // boot.scd — Server起動 + MIDIClient.init
 (
-    // async コールバック内では nowExecutingPath が nil になるため、先にキャプチャ
     var dir = thisProcess.nowExecutingPath.dirname;
 
     Server.default.options.numOutputBusChannels = 2;
@@ -8,20 +7,15 @@
     Server.default.options.sampleRate = 48000;
     Server.default.options.blockSize = 1024;
     Server.default.options.memSize = 65536;
+    Server.default.options.maxNodes = 8192;
 
     Server.default.waitForBoot({
         "SuperCollider server booted.".postln;
+
+        // サーバー起動後にMIDI初期化（ポートマッピング安定後）
         MIDIClient.init;
-        // MIDIIn.connectAll はソース数が多いとIndex out of rangeになるため
-        // 個別に安全に接続する
-        MIDIClient.sources.do { |src, i|
-            try {
-                MIDIIn.connect(i, src);
-            } { |err|
-                ("MIDI connect skipped: " ++ src.device).postln;
-            };
-        };
-        "MIDI initialized.".postln;
+        MIDIIn.connectAll;
+        "MIDI connectAll done.".postln;
 
         // 各モジュールをロード
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
