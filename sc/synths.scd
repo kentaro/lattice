@@ -162,6 +162,175 @@ SynthDef(\lead, { |freq=440, gate=1, vel=0.8, amp=0.5,
     Out.ar(delayBus, sig * delaySend);
 }).add;
 
+// ─── \grandPiano: グランドピアノ (FM 3オペレーター) ───────────────────────
+// FM合成: キャリア + 2モジュレーター, ベロシティで倍音量変化
+SynthDef(\grandPiano, { |freq=440, gate=1, vel=0.8, amp=0.5,
+                         attack=0.01, release=0.5, cutoff=8000, resonance=0.3,
+                         reverbSend=0.3, delaySend=0.0, pan=0.0,
+                         vibRate=5, vibDepth=0,
+                         outBus=0, reverbBus=0, delayBus=0|
+    var env, vibrato, mod1Index, mod2Index, mod1, mod2, sig, filtered;
+
+    env = EnvGen.kr(
+        Env.adsr(attack, 0.8, 0.3, release),
+        gate, doneAction: Done.freeSelf
+    );
+
+    // ビブラート (vibDepth > 0 で有効)
+    vibrato = SinOsc.kr(vibRate, 0, vibDepth * freq * 0.01);
+
+    // FM合成 — 3オペレーター
+    // モジュレーター1: 2倍音, ベロシティでインデックス制御 (高vel = ブライト)
+    mod1Index = vel.linlin(0, 1, 0.5, 4.0);
+    mod1 = SinOsc.ar((freq + vibrato) * 2, 0, mod1Index);
+    // モジュレーター2: 6倍音, 低インデックスでシマー
+    mod2Index = vel.linlin(0, 1, 0.1, 0.6);
+    mod2 = SinOsc.ar((freq + vibrato) * 6, 0, mod2Index);
+    // キャリア + デチューンキャリアでリッチさ
+    sig = SinOsc.ar(freq + vibrato, mod1 + mod2);
+    sig = sig + SinOsc.ar((freq + vibrato) * 1.003, mod1 * 0.5, 0.15);
+
+    // ベロシティ連動フィルター (高vel = ブライト)
+    filtered = RLPF.ar(sig, (cutoff * vel.linlin(0, 1, 0.3, 1.0)).clip(80, 18000),
+        resonance.clip(0.01, 1.0));
+
+    // ソフトクリップサチュレーション
+    filtered = filtered.softclip;
+
+    sig = filtered * env * amp;
+    sig = Pan2.ar(sig, pan);
+
+    // 出力: メイン + センド
+    Out.ar(outBus, sig);
+    Out.ar(reverbBus, sig * reverbSend);
+    Out.ar(delayBus, sig * delaySend);
+}).add;
+
+// ─── \organ: オルガン (加算合成) ──────────────────────────────────────────
+// 5倍音加算合成 + キークリック, 速いアタック/ほぼフルサステイン
+SynthDef(\organ, { |freq=440, gate=1, vel=0.8, amp=0.5,
+                    attack=0.01, release=0.5, cutoff=8000, resonance=0.3,
+                    reverbSend=0.3, delaySend=0.0, pan=0.0,
+                    vibRate=5, vibDepth=0,
+                    outBus=0, reverbBus=0, delayBus=0|
+    var env, vibrato, sig, click, filtered;
+
+    env = EnvGen.kr(
+        Env.adsr(attack.min(0.005), 0.1, 0.95, release.min(0.01)),
+        gate, doneAction: Done.freeSelf
+    );
+
+    // ビブラート (レスリー風に利用可能)
+    vibrato = SinOsc.kr(vibRate, 0, vibDepth * freq * 0.01);
+
+    // 加算合成 — 5倍音 (基音, 2倍, 3倍, 4倍, 8倍)
+    sig = SinOsc.ar(freq + vibrato, 0, 0.5)
+        + SinOsc.ar((freq + vibrato) * 2, 0, 0.3)
+        + SinOsc.ar((freq + vibrato) * 3, 0, 0.25)
+        + SinOsc.ar((freq + vibrato) * 4, 0, 0.15)
+        + SinOsc.ar((freq + vibrato) * 8, 0, 0.1);
+
+    // キークリック (短いノイズバースト)
+    click = WhiteNoise.ar(0.03) * EnvGen.kr(Env.perc(0.001, 0.01));
+    sig = sig + click;
+
+    // LPFフィルター
+    filtered = LPF.ar(sig, cutoff.clip(80, 18000));
+
+    sig = filtered * env * amp * vel;
+    sig = Pan2.ar(sig, pan);
+
+    // 出力: メイン + センド
+    Out.ar(outBus, sig);
+    Out.ar(reverbBus, sig * reverbSend);
+    Out.ar(delayBus, sig * delaySend);
+}).add;
+
+// ─── \strings: ストリングスアンサンブル ───────────────────────────────────
+// 4デチューンSawオシレーター, 遅いアタック, LFOフィルタースイープ
+SynthDef(\strings, { |freq=440, gate=1, vel=0.8, amp=0.5,
+                      attack=0.01, release=0.5, cutoff=8000, resonance=0.3,
+                      reverbSend=0.3, delaySend=0.0, pan=0.0,
+                      vibRate=5, vibDepth=0,
+                      outBus=0, reverbBus=0, delayBus=0|
+    var env, vibrato, sig, filtered;
+
+    env = EnvGen.kr(
+        Env.adsr(attack.max(0.2), 0.5, 0.8, release.max(0.5)),
+        gate, doneAction: Done.freeSelf
+    );
+
+    // ビブラート
+    vibrato = SinOsc.kr(vibRate, 0, vibDepth * freq * 0.01);
+
+    // 4デチューンSawオシレーター (ストリングスアンサンブル)
+    sig = Saw.ar((freq + vibrato) * 0.995, 0.25)
+        + Saw.ar((freq + vibrato) * 0.998, 0.25)
+        + Saw.ar((freq + vibrato) * 1.002, 0.25)
+        + Saw.ar((freq + vibrato) * 1.005, 0.25);
+
+    // LPF + 遅いLFOスイープ
+    filtered = LPF.ar(sig, (cutoff * SinOsc.kr(0.1).range(0.7, 1.0)).clip(80, 18000));
+
+    // ウォームサチュレーション
+    filtered = filtered.softclip;
+
+    sig = filtered * env * amp * vel;
+    sig = Pan2.ar(sig, pan);
+
+    // 出力: メイン + センド
+    Out.ar(outBus, sig);
+    Out.ar(reverbBus, sig * reverbSend);
+    Out.ar(delayBus, sig * delaySend);
+}).add;
+
+// ─── \guitar: アコースティックギター (カープラス・ストロング) ──────────────
+// Pluck.ar物理モデリング, ベロシティでトーン変化, ボディレゾナンス
+SynthDef(\guitar, { |freq=440, gate=1, vel=0.8, amp=0.5,
+                     attack=0.01, release=0.5, cutoff=8000, resonance=0.3,
+                     reverbSend=0.3, delaySend=0.0, pan=0.0,
+                     vibRate=5, vibDepth=0,
+                     outBus=0, reverbBus=0, delayBus=0|
+    var env, vibrato, pluck, body, sig, filtered;
+
+    env = EnvGen.kr(
+        Env.adsr(0.001, 0.01, 1.0, release),
+        gate, doneAction: Done.freeSelf
+    );
+
+    // ビブラート
+    vibrato = SinOsc.kr(vibRate, 0, vibDepth * freq * 0.01);
+
+    // カープラス・ストロング合成
+    // 低vel = 高coef = ダル, 高vel = 低coef = ブライト
+    pluck = Pluck.ar(
+        WhiteNoise.ar,
+        gate,
+        (freq + vibrato).reciprocal,
+        (freq + vibrato).reciprocal,
+        release.max(1.0),
+        coef: vel.linlin(0, 1, 0.5, 0.1)
+    );
+
+    // ボディレゾナンス (250Hz付近のBPF)
+    body = BPF.ar(pluck, 250, 0.3) * 0.3;
+    sig = pluck + body;
+
+    // LPFフィルター
+    filtered = LPF.ar(sig, cutoff.clip(80, 18000));
+
+    // サチュレーション
+    filtered = filtered.softclip;
+
+    sig = filtered * env * amp;
+    sig = Pan2.ar(sig, pan);
+
+    // 出力: メイン + センド
+    Out.ar(outBus, sig);
+    Out.ar(reverbBus, sig * reverbSend);
+    Out.ar(delayBus, sig * delaySend);
+}).add;
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ドラム / パーカッション (ワンショット, vel で音色+音量変化)

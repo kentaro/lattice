@@ -28,7 +28,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     // Preset / mode state (プリセット/モード状態)
     // ═══════════════════════════════════════════════════════════════════════════
-    ~currentPreset = \rhodes;           // default keyboard preset
+    ~currentPreset = \grandPiano;       // default keyboard preset
     ~pitchBend     = 0.0;              // -1.0 ~ +1.0 (±2 semitones)
     ~modValue      = 0.0;              // 0.0 ~ 1.0
 
@@ -219,13 +219,17 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Preset Selection (ch10, pads 48-51)
+    // Preset Selection (ch10, right 2 columns: 38,39,42,43,46,47,50,51)
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
             var presets = Dictionary[
-                48 -> \rhodes,
-                49 -> \wurlitzer,
+                38 -> \grandPiano,
+                39 -> \rhodes,
+                42 -> \wurlitzer,
+                43 -> \organ,
+                46 -> \strings,
+                47 -> \guitar,
                 50 -> \analogPad,
                 51 -> \lead
             ];
@@ -239,12 +243,13 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Drum Pads (ch10, notes 36-47)
+    // Drum Pads (ch10, left 2 columns: 36,37,40,41,44,45,48,49)
     // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
         var normVel = vel / 127.0;
-        if ((chan == 9) && (note >= 36) && (note <= 47)) {
+        var drumNotes = Set[36, 37, 40, 41, 44, 45, 48, 49];
+        if ((chan == 9) && drumNotes.includes(note)) {
             case
             { note == 36 } {
                 Synth(\kick, [\vel, normVel, \outBus, ~drumBus,
@@ -252,14 +257,6 @@
             }
             { note == 37 } {
                 Synth(\snare, [\vel, normVel, \outBus, ~drumBus,
-                    \reverbBus, ~reverbSend], ~drumGroup)
-            }
-            { note == 38 } {
-                Synth(\hihat, [\vel, normVel, \outBus, ~drumBus,
-                    \reverbBus, ~reverbSend], ~drumGroup)
-            }
-            { note == 39 } {
-                Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
             { note == 40 } {
@@ -270,17 +267,21 @@
                 Synth(\rimshot, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 42 } {
-                Synth(\lofikick, [\freq, 65, \vel, normVel, \outBus, ~drumBus,
+            { note == 44 } {
+                Synth(\hihat, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { note == 43 } {
+            { note == 45 } {
+                Synth(\openhat, [\vel, normVel, \outBus, ~drumBus,
+                    \reverbBus, ~reverbSend], ~drumGroup)
+            }
+            { note == 48 } {
                 Synth(\snap, [\vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend], ~drumGroup)
             }
-            { (note >= 44) && (note <= 47) } {
+            { note == 49 } {
                 Synth(\perc, [
-                    \freq, (note - 44 * 5 + 48).midicps,
+                    \freq, 72.midicps,
                     \vel, normVel, \outBus, ~drumBus,
                     \reverbBus, ~reverbSend
                 ], ~drumGroup)
