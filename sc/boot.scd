@@ -34,10 +34,32 @@
         MIDIIn.connectAll;
         "MIDI connectAll done.".postln;
 
-        // ─── 各モジュールをロード ────────────────────────────────────────
+        // ─── SynthDef ロード ─────────────────────────────────────────────
         thisProcess.interpreter.executeFile(dir +/+ "synths.scd");
-        s.sync;  // SynthDef登録完了を保証（effects.scdでSynth生成する前に必須）
         thisProcess.interpreter.executeFile(dir +/+ "effects.scd");
+
+        // 全SynthDef登録完了を待つ（Routine内なので s.sync 有効）
+        s.sync;
+        "All SynthDefs registered.".postln;
+
+        // ─── エフェクトインスタンス起動 ──────────────────────────────────
+        ~reverbFXSynth = Synth(\reverbFX, [
+            \inBus, ~reverbSend, \outBus, ~fxBus,
+            \size, ~fxParams[\reverbSize], \damp, ~fxParams[\reverbDamp]
+        ], ~fxGroup);
+
+        ~delayFXSynth = Synth(\delayFX, [
+            \inBus, ~delaySend, \outBus, ~fxBus,
+            \delayTime, ~fxParams[\delayTime], \feedback, ~fxParams[\delayFB]
+        ], ~fxGroup);
+
+        ~masterFXSynth = Synth(\masterFX, [
+            \kbBus, ~kbBus, \drumBus, ~drumBus, \toneBus, ~toneBus, \fxBus, ~fxBus,
+            \chorusRate, ~fxParams[\chorusRate], \tapeDrive, ~fxParams[\tapeDrive]
+        ], ~masterGroup);
+        "Effects chain started.".postln;
+
+        // ─── MIDIハンドラー ロード ───────────────────────────────────────
         thisProcess.interpreter.executeFile(dir +/+ "midi.scd");
 
         "lattice ready.".postln;

@@ -1,4 +1,5 @@
-// effects.scd — エフェクトチェーン（リバーブ / ディレイ / マスター）
+// effects.scd — エフェクト SynthDef定義 + パラメーター
+// ※ インスタンス起動は boot.scd 内の Routine で行う（s.sync が必要なため）
 
 // ─── エフェクトパラメーター管理 ─────────────────────────────────────────
 ~fxParams = (
@@ -50,20 +51,4 @@ SynthDef(\masterFX, { |kbBus, drumBus, toneBus, fxBus,
     Out.ar(0, sig);
 }).add;
 
-// ─── エフェクトインスタンス起動 ──────────────────────────────────────────
-~reverbFXSynth = Synth(\reverbFX, [
-    \inBus, ~reverbSend, \outBus, ~fxBus,
-    \size, ~fxParams[\reverbSize], \damp, ~fxParams[\reverbDamp]
-], ~fxGroup);
-
-~delayFXSynth = Synth(\delayFX, [
-    \inBus, ~delaySend, \outBus, ~fxBus,
-    \delayTime, ~fxParams[\delayTime], \feedback, ~fxParams[\delayFB]
-], ~fxGroup);
-
-~masterFXSynth = Synth(\masterFX, [
-    \kbBus, ~kbBus, \drumBus, ~drumBus, \toneBus, ~toneBus, \fxBus, ~fxBus,
-    \chorusRate, ~fxParams[\chorusRate], \tapeDrive, ~fxParams[\tapeDrive]
-], ~masterGroup);
-
-"effects.scd loaded.".postln;
+"effects.scd loaded (SynthDefs).".postln;
