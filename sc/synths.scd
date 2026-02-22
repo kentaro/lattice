@@ -353,16 +353,16 @@ SynthDef(\guitar, { |freq=440, gate=1, vel=0.8, amp=0.5,
 
 // ─── \kick: ベーシックキック ──────────────────────────────────────────────
 // SinOscピッチスイープ, vel→アタックの明るさ+音量
-SynthDef(\kick, { |vel=0.8, amp=1.2, outBus=0, reverbBus=0, reverbAmt=0.0, pan=0.0|
+SynthDef(\kick, { |vel=0.8, amp=2.0, outBus=0, reverbBus=0, reverbAmt=0.0, pan=0.0|
     var env, clickEnv, sig, brightness;
     env = EnvGen.kr(Env.perc(0.01, 0.5, 1, -3), doneAction: Done.freeSelf);
     clickEnv = EnvGen.kr(Env.perc(0.001, 0.03));
 
-    brightness = vel.linlin(0, 1, 80, 160);  // vel→ピッチスイープ上端
-    sig = SinOsc.ar(XLine.kr(brightness, 42, 0.1)) * env * amp * vel;
-    sig = sig + (WhiteNoise.ar(0.1 * vel) * clickEnv * amp);
-    sig = (sig * 1.8).softclip;
-    sig = LPF.ar(sig, vel.linlin(0, 1, 600, 1200));  // フィルター開放
+    brightness = vel.linlin(0, 1, 100, 200);
+    sig = SinOsc.ar(XLine.kr(brightness, 45, 0.1)) * env * amp * vel;
+    sig = sig + (WhiteNoise.ar(0.15 * vel) * clickEnv * amp);
+    sig = (sig * 2.0).softclip;
+    sig = LPF.ar(sig, vel.linlin(0, 1, 800, 2000));  // フィルター開放
     sig = sig + (PinkNoise.ar(0.008) * env);
     sig = Pan2.ar(sig, pan);
 
@@ -425,14 +425,14 @@ SynthDef(\openhat, { |vel=0.8, amp=0.5, outBus=0, reverbBus=0, reverbAmt=0.05, p
 
 // ─── \lofikick: ローファイバスドラ (ディープバリアント) ───────────────────
 // vel→サチュレーション量
-SynthDef(\lofikick, { |freq=55, vel=0.8, amp=1.2, outBus=0, reverbBus=0, reverbAmt=0.0, pan=0.0|
+SynthDef(\lofikick, { |freq=55, vel=0.8, amp=2.0, outBus=0, reverbBus=0, reverbAmt=0.0, pan=0.0|
     var env, sig, drive;
     env = EnvGen.kr(Env.perc(0.01, 0.6, 1, -3), doneAction: Done.freeSelf);
-    drive = vel.linlin(0, 1, 1.5, 2.5);  // vel→サチュレーション
+    drive = vel.linlin(0, 1, 2.0, 3.0);
 
     sig = SinOsc.ar(XLine.kr(freq * 3, freq * 0.8, 0.15)) * env * amp * vel;
     sig = (sig * drive).softclip;
-    sig = LPF.ar(sig, vel.linlin(0, 1, 400, 800));
+    sig = LPF.ar(sig, vel.linlin(0, 1, 600, 1500));
     sig = sig + (PinkNoise.ar(0.01) * env);
     sig = Pan2.ar(sig, pan);
 
