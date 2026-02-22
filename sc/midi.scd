@@ -123,7 +123,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
-            ("KB ON: n=" ++ note ++ " v=" ++ vel ++ " voices=" ++ ~activeVoices.size).postln;
+
             // 安全弁: ボイス数が暴走したら全解放
             if (~activeVoices.size > 24) {
                 "WARNING: voice count exceeded 24, releasing all".postln;
@@ -148,7 +148,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
-            ("KB OFF: n=" ++ note ++ " voices=" ++ ~activeVoices.size).postln;
+
             ~heldNotes.remove(note);
             ~releaseVoice.(note);
         };
@@ -230,9 +230,9 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Preset Selection (ch10, right 4 columns: 44-47, 48-51)
-    // 2行×8列: 各列 bottom=N, top=N+4
-    // 右4列 = プリセット: Bottom 44-47, Top 48-51
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Preset Selection (ch10, right 4 columns)
+    // 各列 bottom=N, top=N+4: Bot 44-47, Top 48-51
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
@@ -248,7 +248,7 @@
                 51 -> \guitar
             ];
             var newPreset = presets[note];
-            ("PAD: note=" ++ note ++ " preset=" ++ newPreset).postln;
+
             if (newPreset.notNil && (newPreset != ~currentPreset)) {
                 ~releaseAllVoices.();
                 ~currentPreset = newPreset;
@@ -258,9 +258,9 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Drum Pads (ch10, left 4 columns: 36-39, 40-43)
-    // 2行×8列: 各列 bottom=N, top=N+4
-    // 左4列 = ドラム: Bottom 36-39, Top 40-43
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Drum Pads (ch10, left 4 columns)
+    // 各列 bottom=N, top=N+4: Bot 36-39, Top 40-43
     // Fire-and-forget percussion — uses ~drumGroup / ~drumBus
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\drumPadOn, { |vel, note, chan, srcID|
