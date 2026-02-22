@@ -126,6 +126,7 @@
     // 二重接続はaconnect廃止で防止済み
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
+        ("DEBUG NoteOn: note=" ++ note ++ " chan=" ++ chan ++ " srcID=" ++ srcID ++ " lkUID=" ++ ~launchkeyUID).postln;
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
             var now = SystemClock.seconds;
             var last = ~lastNoteOnTime[note] ? 0;
