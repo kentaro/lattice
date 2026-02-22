@@ -114,12 +114,12 @@
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOn (Launchkey ch1のみ)
-    // ch1(chan==0)限定 — 他チャンネルからの誤発音を完全防止
-    // vel>0 チェック — Launchkeyの vel=0 NoteOff がシンセ生成するのを防止
+    // Keyboard NoteOn (Launchkey, ch10除外)
+    // SC出力のフィードバックループはboot.scdで防止済み（SC出力を接続しない）
+    // 二重接続はaconnect廃止で防止済み
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
-        if ((vel > 0) && (chan == 0) && (srcID == ~launchkeyUID)) {
+        if ((chan != 9) && (srcID == ~launchkeyUID)) {
             // 安全弁: ボイス数が暴走したら全解放
             if (~activeVoices.size > 24) {
                 "WARNING: voice count exceeded 24, releasing all".postln;
@@ -140,10 +140,10 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Keyboard NoteOff (Launchkey ch1のみ)
+    // Keyboard NoteOff (Launchkey, ch10除外)
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOff(\keyboardOff, { |vel, note, chan, srcID|
-        if ((chan == 0) && (srcID == ~launchkeyUID)) {
+        if ((chan != 9) && (srcID == ~launchkeyUID)) {
             ~heldNotes.remove(note);
             ~releaseVoice.(note);
         };
