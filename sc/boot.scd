@@ -30,8 +30,8 @@
         "Groups created.".postln;
 
         // ─── MIDI初期化 ──────────────────────────────────────────────────
-        // connectAll で全ソース接続。二重接続の原因だったaconnectループは廃止済み。
-        // SC出力もソースとして接続されるが、MIDIOut未使用なのでデータは流れない。
+        // connectAll のみで全ソース接続（aconnect は多重イベントの原因なので廃止）。
+        // DAW In の重複イベントは midi.scd の srcID フィルタで除外。
         MIDIClient.init;
         MIDIIn.connectAll;
         "MIDI connectAll done.".postln;
