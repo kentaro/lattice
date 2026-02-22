@@ -126,14 +126,11 @@
     // 二重接続はaconnect廃止で防止済み
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\keyboardOn, { |vel, note, chan, srcID|
-        // DEBUG: 全NoteOnをログ
-        ("NoteOn: n=" ++ note ++ " v=" ++ vel ++ " ch=" ++ chan ++ " src=" ++ srcID ++ " lk=" ++ ~launchkeyUID ++ " voices=" ++ ~activeVoices.size).postln;
         if ((chan != 9) && (srcID == ~launchkeyUID)) {
             var now = SystemClock.seconds;
             var last = ~lastNoteOnTime[note] ? 0;
             if ((now - last) > ~dedupWindow) {
                 ~lastNoteOnTime[note] = now;
-                ("  → SPAWN " ++ ~currentPreset ++ " note=" ++ note).postln;
                 // 安全弁: ボイス数が暴走したら全解放
                 if (~activeVoices.size > 24) {
                     "WARNING: voice count exceeded 24, releasing all".postln;
