@@ -162,45 +162,59 @@ SynthDef(\lead, { |freq=440, gate=1, vel=0.8, amp=0.5,
     Out.ar(delayBus, sig * delaySend);
 }).add;
 
-// ─── \grandPiano: グランドピアノ (FM 3オペレーター) ───────────────────────
-// FM合成: キャリア + 2モジュレーター, ベロシティで倍音量変化
+// ─── \grandPiano: グランドピアノ (FM + ハンマーノイズ) ─────────────────────
+// FM合成3オペレーター + ハンマーアタック + レジスター別音色変化
+// 低音域: 倍音多め・長いディケイ, 高音域: 明るく短いディケイ
 SynthDef(\grandPiano, { |freq=440, gate=1, vel=0.8, amp=0.5,
                          attack=0.01, release=0.5, cutoff=8000, resonance=0.3,
                          reverbSend=0.3, delaySend=0.0, pan=0.0,
                          vibRate=5, vibDepth=0,
                          outBus=0, reverbBus=0, delayBus=0|
-    var env, vibrato, mod1Index, mod2Index, mod1, mod2, sig, filtered;
+    var env, decayEnv, vibrato, sig, hammer, filtered;
+    var mod1, mod2, mod3, fmIndex, brightness, decayTime;
 
+    // ピアノ的エンベロープ: 速いアタック, レジスター依存のディケイ, 低サステイン
+    decayTime = freq.explin(50, 4000, 3.0, 0.5);
     env = EnvGen.kr(
-        Env.adsr(attack, 0.8, 0.3, release),
+        Env.adsr(attack.min(0.005), decayTime, 0.08, release),
         gate, doneAction: Done.freeSelf
     );
 
-    // ビブラート (vibDepth > 0 で有効)
+    // 倍音ディケイ（基音より速く減衰 → 自然なピアノの減衰感）
+    decayEnv = EnvGen.kr(Env.perc(0.005, decayTime * 0.5, 1.0, -4));
+
     vibrato = SinOsc.kr(vibRate, 0, vibDepth * freq * 0.01);
 
-    // FM合成 — 3オペレーター
-    // モジュレーター1: 2倍音, ベロシティでインデックス制御 (高vel = ブライト)
-    mod1Index = vel.linlin(0, 1, 0.5, 4.0);
-    mod1 = SinOsc.ar((freq + vibrato) * 2, 0, mod1Index);
-    // モジュレーター2: 6倍音, 低インデックスでシマー
-    mod2Index = vel.linlin(0, 1, 0.1, 0.6);
-    mod2 = SinOsc.ar((freq + vibrato) * 6, 0, mod2Index);
-    // キャリア + デチューンキャリアでリッチさ
-    sig = SinOsc.ar(freq + vibrato, mod1 + mod2);
-    sig = sig + SinOsc.ar((freq + vibrato) * 1.003, mod1 * 0.5, 0.15);
+    // FMインデックス: ベロシティ × レジスター（低音ほど倍音リッチ）
+    brightness = freq.explin(50, 4000, 1.5, 0.5);
+    fmIndex = vel.linlin(0, 1, 0.5, 3.0) * brightness;
 
-    // ベロシティ連動フィルター (高vel = ブライト)
-    filtered = RLPF.ar(sig, (cutoff * vel.linlin(0, 1, 0.3, 1.0)).clip(80, 18000),
+    // モジュレーター1: 2倍音（オクターブ）
+    mod1 = SinOsc.ar((freq + vibrato) * 2, 0, fmIndex * decayEnv);
+    // モジュレーター2: 3倍音（5度）
+    mod2 = SinOsc.ar((freq + vibrato) * 3, 0, fmIndex * 0.3 * decayEnv);
+    // モジュレーター3: 非整数倍音（ベル感）
+    mod3 = SinOsc.ar((freq + vibrato) * 7.07, 0, fmIndex * 0.15 * decayEnv);
+
+    // キャリア + わずかなデチューン
+    sig = SinOsc.ar(freq + vibrato, mod1 + mod2 + mod3);
+    sig = sig + SinOsc.ar((freq + vibrato) * 1.002, mod1 * 0.3, 0.1);
+
+    // ハンマーアタック（短いノイズバースト）
+    hammer = BPF.ar(WhiteNoise.ar, (freq * 8).clip(500, 12000), 0.5)
+        * EnvGen.kr(Env.perc(0.001, 0.015))
+        * vel.linlin(0, 1, 0.02, 0.12);
+    sig = sig + hammer;
+
+    // レジスター+ベロシティ連動フィルター
+    filtered = RLPF.ar(sig,
+        (cutoff * vel.linlin(0, 1, 0.3, 1.0) * freq.explin(50, 4000, 0.6, 1.2)).clip(80, 18000),
         resonance.clip(0.01, 1.0));
-
-    // ソフトクリップサチュレーション
     filtered = filtered.softclip;
 
     sig = filtered * env * amp;
     sig = Pan2.ar(sig, pan);
 
-    // 出力: メイン + センド
     Out.ar(outBus, sig);
     Out.ar(reverbBus, sig * reverbSend);
     Out.ar(delayBus, sig * delaySend);
