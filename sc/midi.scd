@@ -236,6 +236,7 @@
     // ═══════════════════════════════════════════════════════════════════════════
     MIDIdef.noteOn(\presetSelect, { |vel, note, chan, srcID|
         if ((chan == 9) && (srcID == ~launchkeyUID)) {
+            ("PAD: note=" ++ note ++ " chan=" ++ chan).postln;
             var presets = Dictionary[
                 40 -> \grandPiano,
                 41 -> \rhodes,
