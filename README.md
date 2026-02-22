@@ -8,6 +8,14 @@ Launchkey Mini MK4 25 用 SuperCollider シンセ。8プリセット切替、エ
 - SuperCollider 3.13.0
 - PipeWire (JACK bridge)
 
+## セットアップ
+
+初回のみ実行。PipeWire が HDMI シンクを自動 suspend して音が出なくなる問題を防ぐ。
+
+```bash
+bash bin/setup-pipewire
+```
+
 ## 起動
 
 ```bash
@@ -132,5 +140,6 @@ lattice/
 │   ├── effects.scd    # FX SynthDef群 (ReverbFX/DelayFX/MasterFX)
 │   └── midi.scd       # MIDIハンドラー + ボイス管理
 └── bin/
-    └── lattice        # 起動スクリプト (pw-jack + sclang)
+    ├── lattice          # 起動スクリプト (pw-jack + sclang)
+    └── setup-pipewire   # HDMI suspend無効化 (初回のみ)
 ```

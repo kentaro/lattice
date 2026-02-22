@@ -1,0 +1,28 @@
+#!/bin/bash
+# setup-pipewire — HDMI音声の自動suspend無効化
+# PipeWire/WirePlumber がアイドル時にHDMIシンクをsuspendすると
+# 復帰に失敗して音が出なくなる問題を防ぐ。
+
+set -e
+
+WP_DIR="$HOME/.config/wireplumber/main.lua.d"
+SRC="/usr/share/wireplumber/main.lua.d/90-enable-all.lua"
+DST="$WP_DIR/90-enable-all.lua"
+
+mkdir -p "$WP_DIR"
+
+if [ ! -f "$SRC" ]; then
+    echo "[setup-pipewire] ERROR: $SRC not found. WirePlumber not installed?"
+    exit 1
+fi
+
+cp "$SRC" "$DST"
+sed -i 's/load_script("suspend-node.lua")/-- load_script("suspend-node.lua") -- disabled: breaks HDMI audio/' "$DST"
+
+echo "[setup-pipewire] Wrote $DST"
+grep "suspend-node" "$DST"
+
+echo "[setup-pipewire] Restarting WirePlumber..."
+systemctl --user restart wireplumber
+
+echo "[setup-pipewire] Done. HDMI suspend disabled."
